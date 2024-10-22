@@ -343,8 +343,7 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Methods">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
   <a href="#preprocess_datadf-pddataframe-optionalpddataframe" class="md-nav__link">
@@ -415,11 +414,6 @@
       get_ordered_variable_names() -&gt; List[str]
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -559,8 +553,7 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Methods">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
   <a href="#__call__general_graph-generalgraph-compared_to_graph-optionalgeneralgraph-none-dictstr-any" class="md-nav__link">
@@ -577,11 +570,6 @@
       exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -&gt; Dict[str, Any]
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -727,8 +715,7 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Methods">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
   <a href="#preprocess_datadf-pddataframe-optionalpddataframe" class="md-nav__link">
@@ -799,11 +786,6 @@
       get_ordered_variable_names() -&gt; List[str]
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -943,8 +925,7 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Methods">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
   <a href="#__call__general_graph-generalgraph-compared_to_graph-optionalgeneralgraph-none-dictstr-any" class="md-nav__link">
@@ -961,11 +942,6 @@
       exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -&gt; Dict[str, Any]
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -1064,7 +1040,7 @@
 </li>
 </ul>
 <h4 id="methods">Methods</h4>
-<h5 id="preprocess_datadf-pddataframe-optionalpddataframe"><strong><code>preprocess_data(df: pd.DataFrame) -&gt; Optional[pd.DataFrame]</code></strong></h5>
+<h4 id="preprocess_datadf-pddataframe-optionalpddataframe"><strong><code>preprocess_data(df: pd.DataFrame) -&gt; Optional[pd.DataFrame]</code></strong></h4>
 <p>Preprocesses the input DataFrame based on the specified parameters in the configuration. This includes handling missing values, encoding categorical variables, standardizing features, and performing feature selection.</p>
 <ul>
 <li>
@@ -1080,7 +1056,7 @@
 </ul>
 </li>
 </ul>
-<h5 id="identify_skeletondf-optionalpddataframe-none-show_plots-optionalbool-none-optionaltuplegeneralgraph-dicttupleint-int-setint"><strong><code>identify_skeleton(df: Optional[pd.DataFrame] = None, show_plots: Optional[bool] = None) -&gt; Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]</code></strong></h5>
+<h4 id="identify_skeletondf-optionalpddataframe-none-show_plots-optionalbool-none-optionaltuplegeneralgraph-dicttupleint-int-setint"><strong><code>identify_skeleton(df: Optional[pd.DataFrame] = None, show_plots: Optional[bool] = None) -&gt; Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]</code></strong></h4>
 <p>Identifies the global skeleton of the causal graph using the specified method (e.g., FAS or BCSL).</p>
 <ul>
 <li>
@@ -1097,7 +1073,7 @@
 </ul>
 </li>
 </ul>
-<h5 id="orient_edgesdf-optionalpddataframe-none-show_plot-bool-false-optionalgeneralgraph"><strong><code>orient_edges(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -&gt; Optional[GeneralGraph]</code></strong></h5>
+<h4 id="orient_edgesdf-optionalpddataframe-none-show_plot-bool-false-optionalgeneralgraph"><strong><code>orient_edges(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -&gt; Optional[GeneralGraph]</code></strong></h4>
 <p>Orients the edges of the skeleton using the specified orientation method (e.g., FCI or Hill Climbing).</p>
 <ul>
 <li>
@@ -1114,7 +1090,7 @@
 </ul>
 </li>
 </ul>
-<h5 id="estimate_causal_effectsdf-optionalpddataframe-none-show_plot-bool-false-optionaldictstr-any"><strong><code>estimate_causal_effects(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -&gt; Optional[Dict[str, Any]]</code></strong></h5>
+<h4 id="estimate_causal_effectsdf-optionalpddataframe-none-show_plot-bool-false-optionaldictstr-any"><strong><code>estimate_causal_effects(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -&gt; Optional[Dict[str, Any]]</code></strong></h4>
 <p>Estimates causal effects using the specified methods (e.g., Partial Correlation, SEM).</p>
 <ul>
 <li>
@@ -1131,7 +1107,7 @@
 </ul>
 </li>
 </ul>
-<h5 id="run_pipelinedf-pddataframe"><strong><code>run_pipeline(df: pd.DataFrame)</code></strong></h5>
+<h4 id="run_pipelinedf-pddataframe"><strong><code>run_pipeline(df: pd.DataFrame)</code></strong></h4>
 <p>Executes the full causal discovery pipeline: preprocessing, skeleton identification, edge orientation, and causal effect estimation.</p>
 <ul>
 <li><strong>Parameters:</strong><ul>
@@ -1139,9 +1115,9 @@
 </ul>
 </li>
 </ul>
-<h5 id="show_errors"><strong><code>show_errors()</code></strong></h5>
+<h4 id="show_errors"><strong><code>show_errors()</code></strong></h4>
 <p>Displays all logged errors in a user-friendly format.</p>
-<h5 id="has_errors-bool"><strong><code>has_errors() -&gt; bool</code></strong></h5>
+<h4 id="has_errors-bool"><strong><code>has_errors() -&gt; bool</code></strong></h4>
 <p>Checks if any errors have been logged.</p>
 <ul>
 <li><strong>Returns:</strong><ul>
@@ -1149,7 +1125,7 @@
 </ul>
 </li>
 </ul>
-<h5 id="get_ordered_variable_names-liststr"><strong><code>get_ordered_variable_names() -&gt; List[str]</code></strong></h5>
+<h4 id="get_ordered_variable_names-liststr"><strong><code>get_ordered_variable_names() -&gt; List[str]</code></strong></h4>
 <p>Retrieves the names of ordinal and nominal variables.</p>
 <ul>
 <li><strong>Returns:</strong><ul>
@@ -1321,7 +1297,7 @@
 <li><code>ordered</code> (<code>Optional[List[str]]</code>, default <code>None</code>): A list of variable names that are ordered (ordinal variables). Currently not implemented and will be ignored with a warning.</li>
 </ul>
 <h4 id="methods_1">Methods</h4>
-<h5 id="__call__general_graph-generalgraph-compared_to_graph-optionalgeneralgraph-none-dictstr-any"><strong><code>__call__(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -&gt; Dict[str, Any]</code></strong></h5>
+<h4 id="__call__general_graph-generalgraph-compared_to_graph-optionalgeneralgraph-none-dictstr-any"><strong><code>__call__(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -&gt; Dict[str, Any]</code></strong></h4>
 <p>Calculates the score of the given graph based on BIC from SEM fitting.</p>
 <ul>
 <li>
@@ -1338,7 +1314,7 @@
 </ul>
 </li>
 </ul>
-<h5 id="exhaustive_resultsgeneral_graph-generalgraph-compared_to_graph-optionalgeneralgraph-none-dictstr-any"><strong><code>exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -&gt; Dict[str, Any]</code></strong></h5>
+<h4 id="exhaustive_resultsgeneral_graph-generalgraph-compared_to_graph-optionalgeneralgraph-none-dictstr-any"><strong><code>exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -&gt; Dict[str, Any]</code></strong></h4>
 <p>Fits an SEM model for the given graph and returns the results.</p>
 <ul>
 <li>
