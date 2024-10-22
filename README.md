@@ -6,7 +6,7 @@
 ![Python Version](https://img.shields.io/badge/Python-3.6%2B-blue.svg)
 ![PyPI Version](https://img.shields.io/pypi/v/causal-pipe.svg)
 
-Causal-Pipe is a comprehensive Python package designed to streamline the causal discovery pipeline. It offers robust tools for data preprocessing, skeleton identification, edge orientation, causal effect estimation, and visualization, enabling researchers and data scientists to uncover and analyze causal relationships within their datasets with ease.
+CausalPipe is a Python wrapper built on Causal-Learn and Lavaan that offers a predefined and well-formalized process for causal analysis tailored for everyday users. It provides intuitive tools for data preparation, constructing and orienting causal graphs, and visualizing results, supporting both ordinal and continuous variables.
 
 ## Table of Contents
 
