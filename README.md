@@ -1,12 +1,10 @@
-### README.md
- 
-# Causal-Pipe
+# CausalPipe
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python Version](https://img.shields.io/badge/Python-3.6%2B-blue.svg)
 ![PyPI Version](https://img.shields.io/pypi/v/causal-pipe.svg)
 
-CausalPipe is a Python wrapper built on Causal-Learn and Lavaan that offers a predefined and well-formalized process for causal analysis tailored for everyday users. It provides intuitive tools for data preparation, constructing and orienting causal graphs, and visualizing results, supporting both ordinal and continuous variables.
+**CausalPipe** is a Python wrapper built on [Causal-Learn](https://github.com/cmu-phil/causal-learn) and [Lavaan](https://lavaan.ugent.be/) that offers a predefined and well-formalized process for causal analysis tailored for everyday users. It provides intuitive tools for data preparation, constructing and orienting causal graphs, and visualizing results, supporting both ordinal and continuous variables.
 
 ## Table of Contents
 
@@ -14,7 +12,7 @@ CausalPipe is a Python wrapper built on Causal-Learn and Lavaan that offers a pr
 - [Installation](#installation)
 - [Quick Start](#quick-start)
   - [1. Configuration](#1-configuration)
-  - [2. Initializing CausalToolkit](#2-initializing-causaltoolkit)
+  - [2. Initializing CausalPipe](#2-initializing-causalpipe)
   - [3. Running the Causal Discovery Pipeline](#3-running-the-causal-discovery-pipeline)
 - [Usage Examples](#usage-examples)
   - [Example: Running the Full Pipeline](#example-running-the-full-pipeline)
@@ -44,7 +42,7 @@ pip install causal-pipe
 
 ### Dependencies
 
-Causal-Pipe relies on several Python and R packages. Ensure that you have the following dependencies installed:
+CausalPipe relies on several Python and R packages. Ensure that you have the following dependencies installed:
 
 - **Python 3.6 or higher**
 - **R:** Required for Structural Equation Modeling (`lavaan`) and multiple imputation (`mice`).
@@ -59,17 +57,16 @@ Causal-Pipe relies on several Python and R packages. Ensure that you have the fo
   - `networkx==3.2.1`
   - `pandas==2.2.3`
   - `factor_analyzer==0.5.1`
- 
 
 ## Quick Start
 
 ### 1. Configuration
 
-Begin by defining the configuration for your causal discovery pipeline using the `CausalToolkitConfig` dataclass. This includes specifying variable types, preprocessing parameters, skeleton identification methods, edge orientation methods, and causal effect estimation methods.
+Begin by defining the configuration for your causal discovery pipeline using the `CausalPipeConfig` dataclass. This includes specifying variable types, preprocessing parameters, skeleton identification methods, edge orientation methods, and causal effect estimation methods.
 
 ```python
 from causal_pipe.causal_pipe import (
-    CausalToolkitConfig,
+    CausalPipeConfig,
     DataPreprocessingParams,
     FASSkeletonMethod,
     FCIOrientationMethod,
@@ -96,7 +93,7 @@ variable_types = {
 }
 
 # Initialize the configuration
-config = CausalToolkitConfig(
+config = CausalPipeConfig(
     variable_types=variable_types,
     preprocessing_params=preprocessor_params,
     skeleton_method=FASSkeletonMethod(),
@@ -109,9 +106,9 @@ config = CausalToolkitConfig(
 )
 ```
 
-### 2. Initializing CausalToolkit
+### 2. Initializing CausalPipe
 
-Create an instance of the `CausalToolkit` class by passing the configuration object.
+Create an instance of the `CausalPipe` class by passing the configuration object.
 
 ```python
 from causal_pipe.causal_pipe import CausalPipe
@@ -138,13 +135,13 @@ toolkit.run_pipeline(data)
 
 ### Example: Running the Full Pipeline
 
-Below is an example demonstrating how to configure and run the full causal discovery pipeline using `CausalToolkit`.
+Below is an example demonstrating how to configure and run the full causal discovery pipeline using `CausalPipe`.
 
 ```python
 import numpy as np
 import pandas as pd
 from causal_pipe.causal_pipe import (
-    CausalToolkitConfig,
+    CausalPipeConfig,
     DataPreprocessingParams,
     FASSkeletonMethod,
     FCIOrientationMethod,
@@ -172,7 +169,7 @@ variable_types = {
 }
 
 # Initialize the configuration
-config = CausalToolkitConfig(
+config = CausalPipeConfig(
     variable_types=variable_types,
     preprocessing_params=preprocessor_params,
     skeleton_method=FASSkeletonMethod(),
@@ -213,7 +210,7 @@ Customize the skeleton identification and orientation methods to suit your speci
 
 ```python
 from causal_pipe.causal_pipe import (
-    CausalToolkitConfig,
+    CausalPipeConfig,
     DataPreprocessingParams,
     FASSkeletonMethod,
     BCSLSkeletonMethod,
@@ -221,6 +218,9 @@ from causal_pipe.causal_pipe import (
     HillClimbingOrientationMethod,
     CausalEffectMethod,
     CausalPipe,
+)
+from causal_pipe.pipe_config import (
+    VariableTypes,
 )
 
 # Define preprocessing parameters
@@ -243,7 +243,7 @@ variable_types = {
 }
 
 # Initialize the configuration with BCSL skeleton method and Hill Climbing orientation
-config = CausalToolkitConfig(
+config = CausalPipeConfig(
     variable_types=variable_types,
     preprocessing_params=preprocessor_params,
     skeleton_method=BCSLSkeletonMethod(
@@ -282,26 +282,26 @@ print("Causal Effects:", toolkit.causal_effects)
 
 ## Documentation
 
-Comprehensive documentation is available to help you get started with Causal-Pipe and explore its full range of functionalities. Visit the [Causal-Pipe Documentation](https://github.com/albertbuchard/causal-pipe/docs) for detailed guides, API references, and tutorials.
+Comprehensive documentation is available to help you get started with CausalPipe and explore its full range of functionalities. Visit the [CausalPipe Documentation](https://github.com/albertbuchard/causal-pipe/docs) for detailed guides, API references, and tutorials.
 
 ## Contributing
 
-Contributions are welcome! If you'd like to contribute to Causal-Pipe, please follow these steps:
+Contributions are welcome! If you'd like to contribute to CausalPipe, please follow these steps:
 
 1. **Fork the Repository:** Click the "Fork" button at the top-right corner of the repository page.
-2. **Clone Your Fork:**  
+2. **Clone Your Fork:**
    ```bash
    git clone https://github.com/your-username/causal-pipe.git
    ```
-3. **Create a Branch:**  
+3. **Create a Branch:**
    ```bash
    git checkout -b feature/your-feature-name
    ```
-4. **Commit Your Changes:**  
+4. **Commit Your Changes:**
    ```bash
    git commit -m "Add your detailed description here"
    ```
-5. **Push to Your Fork:**  
+5. **Push to Your Fork:**
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -321,17 +321,19 @@ For any questions or suggestions, feel free to reach out:
 - **Email:** [albert.buchard@gmail.com](mailto:albert.buchard@gmail.com)
 - **GitHub:** [https://github.com/albertbuchard/causal-pipe](https://github.com/albertbuchard/causal-pipe)
 
+---
 
 ### Additional Notes
 
-- **Visualization Outputs:** Ensure that the output directory specified in the configuration exists or is created by the toolkit. The toolkit will save visualizations like correlation graphs, skeletons, oriented graphs, and SEM results in the specified `output_path`.
+- **Visualization Outputs:** Ensure that the output directory specified in the configuration exists or is created by CausalPipe. The toolkit will save visualizations like correlation graphs, skeletons, oriented graphs, and SEM results in the specified `output_path`.
   
-- **R Package Dependencies:** Since Causal-Pipe integrates with R's `lavaan` and `mice` packages, make sure that R is installed on your system and that these packages are accessible. The toolkit attempts to install missing R packages automatically, but you may need to configure R's library paths or permissions accordingly.
+- **R Package Dependencies:** Since CausalPipe integrates with R's `lavaan` and `mice` packages, make sure that R is installed on your system and that these packages are accessible. The toolkit attempts to install missing R packages automatically, but you may need to configure R's library paths or permissions accordingly.
 
 - **Error Handling:** The toolkit includes error handling to catch and report issues during data preprocessing, model fitting, and causal effect estimation. Pay attention to console outputs for any warnings or error messages that may require your attention.
 
-- **Extensibility:** Causal-Pipe is designed to be modular. You can extend its functionalities by adding new methods for skeleton identification, edge orientation, or causal effect estimation by creating new dataclasses and integrating them into the pipeline.
+- **Extensibility:** CausalPipe is designed to be modular. You can extend its functionalities by adding new methods for skeleton identification, edge orientation, or causal effect estimation by creating new dataclasses and integrating them into the pipeline.
 
 - **Performance Considerations:** Some methods, especially those involving multiple imputation or complex SEM models, can be computationally intensive. Ensure that your system has sufficient resources, and consider optimizing parameters like `num_bootstrap_samples` or `max_iter` based on your dataset's size and complexity.
 
-By following this guide and leveraging the provided examples, you can effectively utilize Causal-Pipe to perform sophisticated causal discovery and analysis on your datasets.
+By following this guide and leveraging the provided examples, you can effectively utilize **CausalPipe** to perform sophisticated causal discovery and analysis on your datasets.
+ 
