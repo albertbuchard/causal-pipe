@@ -152,3 +152,6 @@ Thumbs.db
 
 output
 .idea
+/causal_pipe.egg-info/
+/dist/
+/build/

@@ -40,7 +40,7 @@ CausalPipe(config: CausalPipeConfig)
 
 #### Methods
 
-##### **`preprocess_data(df: pd.DataFrame) -> Optional[pd.DataFrame]`**
+#### **`preprocess_data(df: pd.DataFrame) -> Optional[pd.DataFrame]`**
 
   Preprocesses the input DataFrame based on the specified parameters in the configuration. This includes handling missing values, encoding categorical variables, standardizing features, and performing feature selection.
 
@@ -50,7 +50,7 @@ CausalPipe(config: CausalPipeConfig)
   - **Returns:**
       - `Optional[pd.DataFrame]`: Preprocessed data ready for causal discovery, or `None` if an error occurred.
 
-##### **`identify_skeleton(df: Optional[pd.DataFrame] = None, show_plots: Optional[bool] = None) -> Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]`**
+#### **`identify_skeleton(df: Optional[pd.DataFrame] = None, show_plots: Optional[bool] = None) -> Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]`**
 
   Identifies the global skeleton of the causal graph using the specified method (e.g., FAS or BCSL).
 
@@ -61,7 +61,7 @@ CausalPipe(config: CausalPipeConfig)
   - **Returns:**
       - `Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]`: The undirected graph and sepsets, or `None` if an error occurred.
 
-##### **`orient_edges(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -> Optional[GeneralGraph]`**
+#### **`orient_edges(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -> Optional[GeneralGraph]`**
 
   Orients the edges of the skeleton using the specified orientation method (e.g., FCI or Hill Climbing).
 
@@ -72,7 +72,7 @@ CausalPipe(config: CausalPipeConfig)
   - **Returns:**
       - `Optional[GeneralGraph]`: The directed graph, or `None` if an error occurred.
 
-##### **`estimate_causal_effects(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -> Optional[Dict[str, Any]]`**
+#### **`estimate_causal_effects(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -> Optional[Dict[str, Any]]`**
 
   Estimates causal effects using the specified methods (e.g., Partial Correlation, SEM).
 
@@ -83,25 +83,25 @@ CausalPipe(config: CausalPipeConfig)
   - **Returns:**
       - `Optional[Dict[str, Any]]`: The estimated causal effects, or `None` if an error occurred.
 
-##### **`run_pipeline(df: pd.DataFrame)`**
+#### **`run_pipeline(df: pd.DataFrame)`**
 
   Executes the full causal discovery pipeline: preprocessing, skeleton identification, edge orientation, and causal effect estimation.
 
   - **Parameters:**
     - `df` (`pd.DataFrame`): Raw input data.
 
-##### **`show_errors()`**
+#### **`show_errors()`**
 
   Displays all logged errors in a user-friendly format.
 
-##### **`has_errors() -> bool`**
+#### **`has_errors() -> bool`**
 
   Checks if any errors have been logged.
 
   - **Returns:**
     - `bool`: `True` if there are errors, `False` otherwise.
 
-##### **`get_ordered_variable_names() -> List[str]`**
+#### **`get_ordered_variable_names() -> List[str]`**
 
   Retrieves the names of ordinal and nominal variables.
 
@@ -263,7 +263,7 @@ SEMScore(
 
 #### Methods
 
-##### **`__call__(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -> Dict[str, Any]`**
+#### **`__call__(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -> Dict[str, Any]`**
 
   Calculates the score of the given graph based on BIC from SEM fitting.
 
@@ -274,7 +274,7 @@ SEMScore(
   - **Returns:**
     - `Dict[str, Any]`: A dictionary containing the score and additional SEM fitting results.
 
-#####  **`exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -> Dict[str, Any]`**
+####  **`exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -> Dict[str, Any]`**
 
   Fits an SEM model for the given graph and returns the results.
 
