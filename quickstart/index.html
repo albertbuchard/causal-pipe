@@ -427,26 +427,36 @@ This guide will help you get started with **CausalPipe** by showing how to set u
 First, define the configuration for your causal discovery pipeline using the `CausalPipeConfig` dataclass. You’ll specify variable types, preprocessing parameters, and methods for skeleton identification and edge orientation.
 
 ```python
-from causal_pipe.causal_pipe import (
-    CausalPipeConfig, DataPreprocessingParams, FASSkeletonMethod, FCIOrientationMethod, CausalEffectMethod
+from causal_pipe.pipe_config import (
+    DataPreprocessingParams,
+    CausalPipeConfig,
+    VariableTypes,
+    FASSkeletonMethod,
+    FCIOrientationMethod,
+    CausalEffectMethod,
 )
+
+from causal_pipe import CausalPipe
 
 preprocessor_params = DataPreprocessingParams(
-    cat_to_codes=False,
-    standardize=True,
-    filter_method=&quot;mi&quot;,
-    filter_threshold=0.1,
-    handling_missing=&quot;impute&quot;,
-    imputation_method=&quot;mice&quot;,
-    use_r_mice=True
+        cat_to_codes=False,
+        standardize=True,
+        filter_method=&quot;mi&quot;,
+        filter_threshold=0.1,
+        handling_missing=&quot;impute&quot;,
+        imputation_method=&quot;mice&quot;,
+        use_r_mice=True,
+        full_obs_cols=None,
 )
 
-variable_types = {
-    &quot;continuous&quot;: [&quot;age&quot;, &quot;income&quot;],
-    &quot;ordinal&quot;: [&quot;education_level&quot;],
-    &quot;nominal&quot;: [&quot;gender&quot;, &quot;diagnosis_1&quot;, &quot;diagnosis_2&quot;]
-}
+# Define variable types
+variable_types = VariableTypes(
+    continuous=[&quot;age&quot;, &quot;income&quot;],
+    ordinal=[&quot;education_level&quot;],
+    nominal=[&quot;gender&quot;, &quot;diagnosis_1&quot;, &quot;diagnosis_2&quot;],
+)
 
+# Initialize the configuration
 config = CausalPipeConfig(
     variable_types=variable_types,
     preprocessing_params=preprocessor_params,
@@ -456,15 +466,16 @@ config = CausalPipeConfig(
     study_name=&quot;causal_analysis&quot;,
     output_path=&quot;./output&quot;,
     show_plots=True,
-    verbose=True
+    verbose=True,
 )
+
 </code></pre>
 <h2 id="2-initialize-causalpipe">2. Initialize CausalPipe</h2>
 <p>Initialize the CausalPipe toolkit by passing in the configuration:</p>
-<pre><code class="language-python">from causal_pipe.causal_pipe import CausalPipe
+<pre><code class="language-python">from causal_pipe import CausalPipe
 
 # Initialize CausalPipe
-toolkit = CausalPipe(config)
+causal_pipe = CausalPipe(config)
 </code></pre>
 <h2 id="3-run-the-causal-discovery-pipeline">3. Run the Causal Discovery Pipeline</h2>
 <p>Now, you can run the pipeline on your data:</p>
@@ -474,7 +485,7 @@ toolkit = CausalPipe(config)
 data = pd.read_csv(&quot;your_data.csv&quot;)
 
 # Run the causal discovery pipeline
-toolkit.run_pipeline(data)
+causal_pipe.run_pipeline(data)
 </code></pre>
 <hr />
 <p>For more details on the API, see the <a href="../api_reference/">API Reference</a>.</p>
