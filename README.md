@@ -65,9 +65,10 @@ CausalPipe relies on several Python and R packages. Ensure that you have the fol
 Begin by defining the configuration for your causal discovery pipeline using the `CausalPipeConfig` dataclass. This includes specifying variable types, preprocessing parameters, skeleton identification methods, edge orientation methods, and causal effect estimation methods.
 
 ```python
-from causal_pipe.causal_pipe import (
-    CausalPipeConfig,
+from causal_pipe.pipe_config import (
     DataPreprocessingParams,
+    CausalPipeConfig,
+    VariableTypes,
     FASSkeletonMethod,
     FCIOrientationMethod,
     CausalEffectMethod,
@@ -86,11 +87,11 @@ preprocessor_params = DataPreprocessingParams(
 )
 
 # Define variable types
-variable_types = {
-    "continuous": ["age", "income"],
-    "ordinal": ["education_level"],
-    "nominal": ["gender", "diagnosis_1", "diagnosis_2"],
-}
+variable_types = VariableTypes(
+    continuous=["age", "income"],
+    ordinal=["education_level"],
+    nominal=["gender", "diagnosis_1", "diagnosis_2"],
+)
 
 # Initialize the configuration
 config = CausalPipeConfig(
@@ -104,6 +105,7 @@ config = CausalPipeConfig(
     show_plots=True,
     verbose=True,
 )
+
 ```
 
 ### 2. Initializing CausalPipe
@@ -111,10 +113,10 @@ config = CausalPipeConfig(
 Create an instance of the `CausalPipe` class by passing the configuration object.
 
 ```python
-from causal_pipe.causal_pipe import CausalPipe
+from causal_pipe import CausalPipe
 
 # Initialize the toolkit
-toolkit = CausalPipe(config)
+causal_pipe = CausalPipe(config)
 ```
 
 ### 3. Running the Causal Discovery Pipeline
@@ -128,7 +130,7 @@ import pandas as pd
 data = pd.read_csv("your_data.csv")
 
 # Run the causal discovery pipeline
-toolkit.run_pipeline(data)
+causal_pipe.run_pipeline(data)
 ```
 
 ## Usage Examples
@@ -139,50 +141,7 @@ Below is an example demonstrating how to configure and run the full causal disco
 
 ```python
 import numpy as np
-import pandas as pd
-from causal_pipe.causal_pipe import (
-    CausalPipeConfig,
-    DataPreprocessingParams,
-    FASSkeletonMethod,
-    FCIOrientationMethod,
-    CausalEffectMethod,
-    CausalPipe,
-)
-
-# Define preprocessing parameters
-preprocessor_params = DataPreprocessingParams(
-    cat_to_codes=False,
-    standardize=True,
-    filter_method="mi",
-    filter_threshold=0.1,
-    handling_missing="impute",
-    imputation_method="mice",
-    use_r_mice=True,
-    full_obs_cols=None,
-)
-
-# Define variable types
-variable_types = {
-    "continuous": ["age", "income"],
-    "ordinal": ["education_level"],
-    "nominal": ["gender", "diagnosis_1", "diagnosis_2"],
-}
-
-# Initialize the configuration
-config = CausalPipeConfig(
-    variable_types=variable_types,
-    preprocessing_params=preprocessor_params,
-    skeleton_method=FASSkeletonMethod(),
-    orientation_method=FCIOrientationMethod(),
-    causal_effect_methods=[CausalEffectMethod(name="pearson")],
-    study_name="causal_analysis",
-    output_path="./output",
-    show_plots=True,
-    verbose=True,
-)
-
-# Initialize the toolkit
-toolkit = CausalPipe(config)
+import pandas as pd 
 
 # Create a dummy DataFrame
 np.random.seed(42)
@@ -198,10 +157,10 @@ df = pd.DataFrame(
 )
 
 # Run the causal discovery pipeline
-toolkit.run_pipeline(df)
+causal_pipe.run_pipeline(df)
 
 # Access causal effects
-print("Causal Effects:", toolkit.causal_effects)
+print("Causal Effects:", causal_pipe.causal_effects)
 ```
 
 ### Example: Custom Configuration
@@ -209,20 +168,6 @@ print("Causal Effects:", toolkit.causal_effects)
 Customize the skeleton identification and orientation methods to suit your specific analysis needs.
 
 ```python
-from causal_pipe.causal_pipe import (
-    CausalPipeConfig,
-    DataPreprocessingParams,
-    FASSkeletonMethod,
-    BCSLSkeletonMethod,
-    FCIOrientationMethod,
-    HillClimbingOrientationMethod,
-    CausalEffectMethod,
-    CausalPipe,
-)
-from causal_pipe.pipe_config import (
-    VariableTypes,
-)
-
 # Define preprocessing parameters
 preprocessor_params = DataPreprocessingParams(
     cat_to_codes=True,
@@ -234,14 +179,7 @@ preprocessor_params = DataPreprocessingParams(
     use_r_mice=True,
     full_obs_cols=["age"],
 )
-
-# Define variable types
-variable_types = {
-    "continuous": ["age", "income"],
-    "ordinal": ["education_level"],
-    "nominal": ["gender", "diagnosis_1", "diagnosis_2"],
-}
-
+ 
 # Initialize the configuration with BCSL skeleton method and Hill Climbing orientation
 config = CausalPipeConfig(
     variable_types=variable_types,
@@ -268,16 +206,16 @@ config = CausalPipeConfig(
 )
 
 # Initialize the toolkit
-toolkit = CausalPipe(config)
+causal_pipe = CausalPipe(config)
 
 # Load your data
 data = pd.read_csv("your_custom_data.csv")
 
 # Run the causal discovery pipeline
-toolkit.run_pipeline(data)
+causal_pipe.run_pipeline(data)
 
 # Access causal effects
-print("Causal Effects:", toolkit.causal_effects)
+print("Causal Effects:", causal_pipe.causal_effects)
 ```
 
 ## Documentation

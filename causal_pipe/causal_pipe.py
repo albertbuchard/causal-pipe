@@ -1,5 +1,3 @@
-# causal_pipe/causal_toolkit.py
-
 import os
 import warnings
 import logging
