@@ -282,7 +282,7 @@ print("Causal Effects:", toolkit.causal_effects)
 
 ## Documentation
 
-Comprehensive documentation is available to help you get started with CausalPipe and explore its full range of functionalities. Visit the [CausalPipe Documentation](https://github.com/albertbuchard/causal-pipe/docs) for detailed guides, API references, and tutorials.
+Comprehensive documentation is available to help you get started with CausalPipe and explore its full range of functionalities. Visit the [CausalPipe Documentation](https://albertbuchard.github.io/causal-pipe/) for detailed guides, API references, and tutorials.
 
 ## Contributing
 
