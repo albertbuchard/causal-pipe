@@ -446,7 +446,7 @@ def fit_sem_lavaan(
             print(e, file=sys.stderr)
             return {}
 
-        if estimator.startswith("ML"):
+        if estimator == "ML":
             # Use nonnest2 for model comparison
             try:
                 ro.r(
