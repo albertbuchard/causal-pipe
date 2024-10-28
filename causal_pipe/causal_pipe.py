@@ -622,7 +622,7 @@ class CausalPipe:
                     coef_graph, edges_with_coefficients = (
                         add_edge_coefficients_from_sem_fit(
                             best_graph,
-                            model_output=self.causal_effects[method.name],
+                            model_output=self.causal_effects[method.name]["summary"],
                         )
                     )
                     visualize_graph(
