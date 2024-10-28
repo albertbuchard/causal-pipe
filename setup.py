@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="causal-pipe",
-    version="0.5.0",
+    version="0.7.0",
     author="Buchard, Albert",
     author_email="albert.buchard@gmail.com",
     description="A Python package streamlining the causal discovery pipeline for easy use.",
@@ -24,6 +24,8 @@ setup(
         "seaborn==0.13.2",
         "matplotlib==3.9.2",
         "graphviz==0.20.3",
+        "pydantic==2.9.2",
+        "pydot==3.0.2",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

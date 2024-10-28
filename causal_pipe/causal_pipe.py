@@ -27,6 +27,7 @@ from causal_pipe.utilities.graph_utilities import (
     unify_edge_types_directed_undirected,
     general_graph_to_sem_model,
     get_nodes_from_node_names,
+    add_edge_coefficients_from_sem_fit,
 )
 from causal_pipe.utilities.plot_utilities import plot_correlation_graph
 from .pipe_config import (
@@ -67,6 +68,7 @@ class CausalPipe:
         if isinstance(config.variable_types, dict):
             config.variable_types = VariableTypes(**config.variable_types)
         self.variable_types = config.variable_types
+        self.filtered_variables = []
 
         # Method configurations
         self.preprocessing_params = config.preprocessing_params
@@ -209,7 +211,9 @@ class CausalPipe:
                         print("Dropping rows with missing values...")
                         df_prepared = df_prepared.dropna()
                     elif self.preprocessing_params.handling_missing == "impute":
-                        print("Performing data imputation using MICE...")
+                        print(
+                            f"Performing data imputation using {self.preprocessing_params.imputation_method}..."
+                        )
                         mice_dfs = perform_multiple_imputation(
                             df_prepared,
                             impute_cols=continuous_vars + nominal_vars + ordinal_vars,
@@ -234,6 +238,7 @@ class CausalPipe:
 
                 # Prepare data for causal discovery
                 print("Preparing data for causal discovery...")
+                initial_columns = set(list(df_prepared.columns))
                 df_prepared = prepare_data_for_causal_discovery(
                     df_prepared,
                     handle_missing="error",
@@ -243,6 +248,15 @@ class CausalPipe:
                     filter_method=self.preprocessing_params.filter_method,
                     filter_threshold=self.preprocessing_params.filter_threshold,
                 )
+                self.filtered_variables = list(
+                    initial_columns - set(list(df_prepared.columns))
+                )
+                if self.filtered_variables:
+                    print(
+                        f"Filtered out variables: {self.filtered_variables} due to low "
+                        f"correlation with {self.preprocessing_params.keep_only_correlated_with} "
+                        f"- using {self.preprocessing_params.filter_method} filter."
+                    )
 
             # Perform data validity checks
             test_results = perform_data_validity_checks(df_prepared)
@@ -456,6 +470,11 @@ class CausalPipe:
         """
         method_name = "estimate_causal_effects"
         try:
+            if self.causal_effect_methods is None:
+                print("No causal effect estimation methods specified.")
+                self.causal_effects = None
+                return None
+
             if self.directed_graph is None:
                 raise ValueError(
                     "Edges must be oriented before estimating causal effects."
@@ -530,10 +549,17 @@ class CausalPipe:
                         estimator=method.params.get("estimator", default_estimator),
                         ordered=ordered,
                     )
+                    coef_graph, edges_with_coefficients = (
+                        add_edge_coefficients_from_sem_fit(
+                            directed_graph,
+                            model_output=self.causal_effects[method.name],
+                        )
+                    )
                     out_sem_dir = os.path.join(self.output_path, "causal_effect", "sem")
                     os.makedirs(out_sem_dir, exist_ok=True)
                     visualize_graph(
-                        directed_graph,
+                        coef_graph,
+                        edges=edges_with_coefficients,
                         title="SEM Result",
                         labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
@@ -608,7 +634,16 @@ class CausalPipe:
         """
         ordinal_vars = self.variable_types.ordinal
         nominal_vars = self.variable_types.nominal
-        return ordinal_vars + nominal_vars
+        initial_vars = ordinal_vars + nominal_vars
+        if self.filtered_variables and any(
+            var in self.filtered_variables for var in initial_vars
+        ):
+            print(
+                "-- Some ordinal/nominal variables were filtered out: ",
+                self.filtered_variables,
+            )
+            return [var for var in initial_vars if var not in self.filtered_variables]
+        return initial_vars
 
     def run_pipeline(self, df: pd.DataFrame):
         """

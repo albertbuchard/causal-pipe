@@ -78,8 +78,9 @@ from causal_pipe.pipe_config import (
 preprocessor_params = DataPreprocessingParams(
     cat_to_codes=False,
     standardize=True,
-    filter_method="mi",
-    filter_threshold=0.1,
+    # keep_only_correlated_with=None,
+    # filter_method="mi",
+    # filter_threshold=0.1,
     handling_missing="impute",
     imputation_method="mice",
     use_r_mice=True,
@@ -172,6 +173,7 @@ Customize the skeleton identification and orientation methods to suit your speci
 preprocessor_params = DataPreprocessingParams(
     cat_to_codes=True,
     standardize=False,
+    keep_only_correlated_with=None,
     filter_method="pearson",
     filter_threshold=0.2,
     handling_missing="drop",

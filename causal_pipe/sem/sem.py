@@ -120,7 +120,7 @@ def fit_sem_lavaan(
 
     # Fit the SEM model with the ordered argument if provided
     try:
-        if ordered is not None:
+        if ordered:
             if not isinstance(ordered, list):
                 raise TypeError(
                     "The 'ordered' parameter must be a list of variable names."

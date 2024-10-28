@@ -58,10 +58,10 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     ).codes  # Convert categories to integer codes
 
     # Generate dependent continuous variables Var3 and Var4 influenced by Var1 and Var2 respectively
-    Var3 = 2 * Var1_continuous + np.random.normal(
+    Var3 = -2 * Ord1 + np.random.normal(
         0, 1, n_samples
     )  # Var3 depends on Var1_continuous
-    Var4 = 0.5 * Var2_continuous + np.random.normal(
+    Var4 = 0.5 * Ord2 + np.random.normal(
         0, 1, n_samples
     )  # Var4 depends on Var2_continuous
 
@@ -69,6 +69,9 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     Var5 = (
         Var3 + Var4 + np.random.normal(0, 1, n_samples)
     )  # Var5 depends on Var3 and Var4
+
+    # Unrelated variable
+    Var6 = np.random.normal(0, 1, n_samples)
 
     # Create a DataFrame with the generated variables
     data = pd.DataFrame(
@@ -79,19 +82,21 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
             "Var3": Var3,
             "Var4": Var4,
             "Var5": Var5,
+            "Var6": Var6,
         }
     )
 
     # Update the configuration to specify variable types
     config.variable_types = VariableTypes(
-        continuous=["Var0", "Var3", "Var4", "Var5"], ordinal=["Ord1", "Ord2"]
+        continuous=["Var0", "Var3", "Var4", "Var5", "Var6"], ordinal=["Ord1", "Ord2"]
     )
 
     config.study_name = "pipe_easy_dataset_with_ordinal"
     config.causal_effect_methods = [
         # For ordinal data
-        CausalEffectMethod(name="sem", directed=True, params={"estimator": "WLSMV"})
+        CausalEffectMethod(name="sem", directed=True)
     ]
+    # config.preprocessing_params.keep_only_correlated_with = ["Var0", "Var5"]
 
     # Compare different causal discovery pipelines using the generated data and configuration
     compare_pipelines(data, config=config)

@@ -1,4 +1,8 @@
-from causal_pipe.utilities.model_comparison_utilities import BETTER_MODEL_1, BETTER_MODEL_2, NO_BETTER_MODEL
+from causal_pipe.utilities.model_comparison_utilities import (
+    BETTER_MODEL_1,
+    BETTER_MODEL_2,
+    NO_BETTER_MODEL,
+)
 
 
 def fit_bayesian_sem_blavaan(
@@ -273,6 +277,9 @@ def fit_bayesian_sem_blavaan(
                         f"var_names must be a dictionary mapping current factor names to new names, got {type(var_names)}."
                     )
                 measurement_model_df["LV"] = measurement_model_df["LV"].map(
+                    lambda x: var_names.get(x, x)
+                )
+                measurement_model_df["Item"] = measurement_model_df["Item"].map(
                     lambda x: var_names.get(x, x)
                 )
 

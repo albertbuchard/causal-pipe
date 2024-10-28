@@ -1,9 +1,10 @@
 import copy
 import itertools
 from operator import xor
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any, Optional
 
 import numpy as np
+import pydot
 from bcsl.graph_utils import (
     get_nondirected_edge,
     get_undirected_edge,
@@ -14,6 +15,7 @@ from causallearn.graph.Edge import Edge
 from causallearn.graph.Endpoint import Endpoint
 from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.graph.GraphNode import GraphNode
+from causallearn.graph.NodeType import NodeType
 
 
 def set_undirected_edges(graph, edges):
@@ -619,3 +621,232 @@ def get_nodes_from_node_names(node_names: List[str]) -> List[GraphNode]:
         node = GraphNode(name)
         nodes.append(node)
     return nodes
+
+
+def add_edge_coefficients_from_sem_fit(
+    graph: GeneralGraph, model_output: Dict[str, Any]
+):
+    """
+    Validates that all edges in the graph exist in the model and adds coefficient information.
+
+    Parameters:
+    - graph: An instance of GeneralGraph.
+    - model_output: A dictionary containing the model output, including 'structural_model',
+      'residual_covariances', and 'measurement_model'.
+    """
+    # Convert graph
+    graph = unify_edge_types_directed_undirected(graph)
+
+    # Parse the model output
+    measurement_model = model_output.get("measurement_model", [])
+    structural_model = model_output.get("structural_model", [])
+    residual_covariances = model_output.get("residual_covariances", [])
+
+    # Create mappings for quick lookup
+    # Measurement: (LV, Item) -> coefficient
+    measurement_dict = {}
+    if measurement_model:
+        for mm in measurement_model:
+            lv = mm["LV"]
+            item = mm["Item"]
+            std_estimate = mm.get("Std.Estimate", None)  # Using standardized estimate
+            if std_estimate is not None:
+                measurement_dict[(lv, item)] = std_estimate
+
+    # Structural: (Predictor, LV) -> coefficient
+    structural_dict = {}
+    if structural_model:
+        for sm in structural_model:
+            lv = sm["LV"]
+            predictor = sm["Predictor"]
+            coef = sm["Coefficient"]
+            structural_dict[(predictor, lv)] = coef
+
+    # Residual Covariances: (Var1, Var2) -> coefficient
+    residual_dict = {}
+    if residual_covariances:
+        for rc in residual_covariances:
+            var1 = rc["Variable1"]
+            var2 = rc["Variable2"]
+            coef = rc["Coefficient"]
+            # Ensure consistent ordering
+            key = tuple(sorted([var1, var2]))
+            residual_dict[key] = coef
+
+    # Now, iterate over all edges in the graph
+    edges_with_coefficients = []
+    for edge in graph.get_graph_edges():
+        node1 = edge.get_node1().get_name()
+        node2 = edge.get_node2().get_name()
+        endpoints = (str(edge.get_endpoint1()), str(edge.get_endpoint2()))
+
+        coefficient = None
+
+        # Check Measurement Model
+        if endpoints == ("TAIL", "ARROW"):  # LV -> Item
+            key = (node1, node2)
+            if key in measurement_dict:
+                coefficient = measurement_dict[key]
+            elif key in structural_dict:
+                coefficient = structural_dict[key]
+            else:
+                raise ValueError(
+                    f"Edge between '{node1}' and '{node2}' not found in the model."
+                )
+        elif endpoints == ("ARROW", "ARROW"):  # Bidirected residual covariance
+            key = tuple(sorted([node1, node2]))
+            if key in residual_dict:
+                coefficient = residual_dict[key]
+        else:
+            raise ValueError(f"Invalid edge endpoints: {endpoints}")
+
+        # Assign coefficient if found
+        if coefficient is not None:
+            if isinstance(edge, EdgeWithCoefficient):
+                edge.coefficient = coefficient
+                edges_with_coefficients.append(edge)
+            else:
+                # Remove edge
+                graph.remove_edge(edge)
+                # Add edge with coefficient
+                new_edge = EdgeWithCoefficient(
+                    node1=edge.node1,
+                    node2=edge.node2,
+                    end1=edge.endpoint1,
+                    end2=edge.endpoint2,
+                    coefficient=coefficient,
+                )
+                graph.add_edge(new_edge)
+                edges_with_coefficients.append(new_edge)
+        else:
+            # Edge not found in the model; raise an error
+            raise ValueError(
+                f"Edge between '{node1}' and '{node2}' with endpoints {endpoints} not found in the model."
+            )
+
+    return graph, edges_with_coefficients
+
+
+class EdgeWithCoefficient(Edge):
+    def __init__(self, node1, node2, end1, end2, coefficient=None):
+        super().__init__(node1, node2, end1, end2)
+        self.coefficient = coefficient
+
+    def __str__(self):
+        return f"{super().__str__()} (Coefficient: {self.coefficient})"
+
+
+# Define refined colors
+POSITIVE_COLOR = "#2ca02c"  # Rich medium green
+NEGATIVE_COLOR = "#d62728"  # Strong medium red
+
+
+def graph_with_coefficient_to_pydot(
+    G: GeneralGraph,
+    edges: Optional[List[Edge]] = None,
+    labels: Optional[List[str]] = None,
+    title: str = "",
+    dpi: float = 200,
+) -> pydot.Dot:
+    """
+    Convert a GeneralGraph object to a DOT object with edge coefficients and color coding.
+
+    Parameters
+    ----------
+    G : GeneralGraph
+        A graph object from causal-learn.
+    edges : list, optional (default=None)
+        Specific edges to include. If None, all edges from G are used.
+    labels : list, optional (default=None)
+        Labels for the nodes. If None, node names are used.
+    title : str, optional (default="")
+        The title of the graph.
+    dpi : float, optional (default=200)
+        The resolution of the graph.
+
+    Returns
+    -------
+    pydot_g : pydot.Dot
+        The DOT representation of the graph.
+    """
+    import pydot
+
+    nodes = G.get_nodes()
+    if labels is not None:
+        assert len(labels) == len(nodes), "Length of labels must match number of nodes."
+
+    # Initialize the pydot graph
+    pydot_g = pydot.Dot(title, graph_type="digraph", fontsize=18)
+    pydot_g.obj_dict["attributes"]["dpi"] = dpi
+
+    # Add nodes to the pydot graph
+    for i, node in enumerate(nodes):
+        node_label = labels[i] if labels is not None else node.get_name()
+        node_shape = "square" if node.get_node_type() == NodeType.LATENT else "ellipse"
+        pydot_node = pydot.Node(str(i), label=node_label, shape=node_shape)
+        pydot_g.add_node(pydot_node)
+
+    # Define a helper function to map Endpoint to pydot arrow types
+    def get_g_arrow_type(endpoint: Endpoint) -> str:
+        if endpoint == Endpoint.TAIL:
+            return "none"
+        elif endpoint == Endpoint.ARROW:
+            return "normal"
+        elif endpoint == Endpoint.CIRCLE:
+            return "odot"
+        else:
+            raise NotImplementedError(f"Unknown Endpoint type: {endpoint}")
+
+    # Use all graph edges if specific edges are not provided
+    if edges is None:
+        edges = G.get_graph_edges()
+
+    # Iterate over each edge to add to the pydot graph
+    for edge in edges:
+        node1 = edge.get_node1()
+        node2 = edge.get_node2()
+        node1_id = nodes.index(node1)
+        node2_id = nodes.index(node2)
+        endpoint1 = edge.get_endpoint1()
+        endpoint2 = edge.get_endpoint2()
+
+        # Determine arrow styles based on endpoints
+        arrowtail = get_g_arrow_type(endpoint1)
+        arrowhead = get_g_arrow_type(endpoint2)
+
+        # Create the pydot edge with directional attributes
+        dot_edge = pydot.Edge(
+            str(node1_id),
+            str(node2_id),
+            arrowtail=arrowtail,
+            arrowhead=arrowhead,
+            dir="both",  # Show both directions based on endpoints
+        )
+
+        # Initialize label and color
+        label = ""
+        color = "black"  # Default color
+
+        # Check if the edge has a coefficient and assign label and color accordingly
+        if isinstance(edge, EdgeWithCoefficient) and edge.coefficient is not None:
+            coefficient = edge.coefficient
+            label = f"{coefficient:.3f}"
+            if coefficient > 0:
+                color = POSITIVE_COLOR
+            elif coefficient < 0:
+                color = NEGATIVE_COLOR
+            # If coefficient is zero, retain default color
+            dot_edge.set_label(label)
+            dot_edge.set_color(color)
+
+        # Optional: Handle other edge properties (e.g., penwidth, style)
+        # Example:
+        if Edge.Property.dd in edge.properties:
+            dot_edge.set_color("green3")
+        if Edge.Property.nl in edge.properties:
+            dot_edge.set_penwidth(2.0)
+
+        # Add the edge to the pydot graph
+        pydot_g.add_edge(dot_edge)
+
+    return pydot_g

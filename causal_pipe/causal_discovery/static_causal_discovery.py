@@ -23,6 +23,8 @@ import warnings
 from scipy import stats
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
+from causal_pipe.utilities.graph_utilities import graph_with_coefficient_to_pydot
+
 
 def mi_to_pearson(mi):
     """
@@ -521,7 +523,9 @@ def visualize_causal_graph(
     )
 
 
-def visualize_graph(graph, title=None, show=True, output_path=None, labels=None):
+def visualize_graph(
+    graph, edges=None, title=None, show=True, output_path=None, labels=None
+):
     """
     Visualizes the causal graph.
 
@@ -532,7 +536,7 @@ def visualize_graph(graph, title=None, show=True, output_path=None, labels=None)
     - output_path (str): The path to save the graph image.
     - labels (list): Optional list of labels for the nodes
     """
-    pyd = GraphUtils.to_pydot(graph, labels=labels, dpi=300)
+    pyd = graph_with_coefficient_to_pydot(graph, edges=edges, labels=labels, dpi=300)
     tmp_png = pyd.create_png()
     sio = io.BytesIO()
     sio.write(tmp_png)

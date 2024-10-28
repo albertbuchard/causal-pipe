@@ -10,11 +10,11 @@ Welcome to the **CausalPipe** API Reference. This section provides detailed info
     - [VariableTypes](#variabletypes)
     - [DataPreprocessingParams](#datapreprocessingparams)
     - [SkeletonMethod](#skeletonmethod)
-    - [BCSLSkeletonMethod](#bcslmethod)
-    - [FASSkeletonMethod](#fasskeletonmethod)
+      - [BCSLSkeletonMethod](#bcslmethod)
+      - [FASSkeletonMethod](#fasskeletonmethod)
     - [OrientationMethod](#orientationmethod)
-    - [FCIOrientationMethod](#fciorientationmethod)
-    - [HillClimbingOrientationMethod](#hillclimbingorientationmethod)
+      - [FCIOrientationMethod](#fciorientationmethod)
+      - [HillClimbingOrientationMethod](#hillclimbingorientationmethod)
     - [CausalEffectMethod](#causaleffectmethod)
   - [SEMScore](#semscore)
 - [Functions](#functions)
@@ -42,86 +42,90 @@ CausalPipe(config: CausalPipeConfig)
 
 #### **`preprocess_data(df: pd.DataFrame) -> Optional[pd.DataFrame]`**
 
-  Preprocesses the input DataFrame based on the specified parameters in the configuration. This includes handling missing values, encoding categorical variables, standardizing features, and performing feature selection.
+Preprocesses the input DataFrame based on the specified parameters in the configuration. This includes handling missing values, encoding categorical variables, standardizing features, and performing feature selection.
 
-  - **Parameters:**
-      - `df` (`pd.DataFrame`): Raw input data.
+- **Parameters:**
+    - `df` (`pd.DataFrame`): Raw input data.
 
-  - **Returns:**
-      - `Optional[pd.DataFrame]`: Preprocessed data ready for causal discovery, or `None` if an error occurred.
+- **Returns:**
+    - `Optional[pd.DataFrame]`: Preprocessed data ready for causal discovery, or `None` if an error occurred.
 
 #### **`identify_skeleton(df: Optional[pd.DataFrame] = None, show_plots: Optional[bool] = None) -> Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]`**
 
-  Identifies the global skeleton of the causal graph using the specified method (e.g., FAS or BCSL).
+Identifies the global skeleton of the causal graph using the specified method (e.g., FAS or BCSL).
 
-  - **Parameters:**
-      - `df` (`Optional[pd.DataFrame]`): Raw input data. If `None`, uses preprocessed data.
-      - `show_plots` (`Optional[bool]`): Whether to display plots. Overrides the default setting.
+- **Parameters:**
+    - `df` (`Optional[pd.DataFrame]`): Raw input data. If `None`, uses preprocessed data.
+    - `show_plots` (`Optional[bool]`): Whether to display plots. Overrides the default setting.
 
-  - **Returns:**
-      - `Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]`: The undirected graph and sepsets, or `None` if an error occurred.
+- **Returns:**
+    - `Optional[Tuple[GeneralGraph, Dict[Tuple[int, int], Set[int]]]]`: The undirected graph and sepsets, or `None` if an error occurred.
 
 #### **`orient_edges(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -> Optional[GeneralGraph]`**
 
-  Orients the edges of the skeleton using the specified orientation method (e.g., FCI or Hill Climbing).
+Orients the edges of the skeleton using the specified orientation method (e.g., FCI or Hill Climbing).
 
-  - **Parameters:**
-      - `df` (`Optional[pd.DataFrame]`): Raw input data. If `None`, uses preprocessed data.
-      - `show_plot` (`bool`): Whether to display the resulting graph.
+- **Parameters:**
+    - `df` (`Optional[pd.DataFrame]`): Raw input data. If `None`, uses preprocessed data.
+    - `show_plot` (`bool`): Whether to display the resulting graph.
 
-  - **Returns:**
-      - `Optional[GeneralGraph]`: The directed graph, or `None` if an error occurred.
+- **Returns:**
+    - `Optional[GeneralGraph]`: The directed graph, or `None` if an error occurred.
 
 #### **`estimate_causal_effects(df: Optional[pd.DataFrame] = None, show_plot: bool = False) -> Optional[Dict[str, Any]]`**
 
-  Estimates causal effects using the specified methods (e.g., Partial Correlation, SEM).
+Estimates causal effects using the specified methods (e.g., Partial Correlation, SEM).
 
-  - **Parameters:**
-      - `df` (`Optional[pd.DataFrame]`): Raw input data. If `None`, uses preprocessed data.
-      - `show_plot` (`bool`): Whether to display plots.
+- **Parameters:**
+    - `df` (`Optional[pd.DataFrame]`): Raw input data. If `None`, uses preprocessed data.
+    - `show_plot` (`bool`): Whether to display plots.
 
-  - **Returns:**
-      - `Optional[Dict[str, Any]]`: The estimated causal effects, or `None` if an error occurred.
+- **Returns:**
+    - `Optional[Dict[str, Any]]`: The estimated causal effects, or `None` if an error occurred.
 
 #### **`run_pipeline(df: pd.DataFrame)`**
 
-  Executes the full causal discovery pipeline: preprocessing, skeleton identification, edge orientation, and causal effect estimation.
+Executes the full causal discovery pipeline: preprocessing, skeleton identification, edge orientation, and causal effect estimation.
 
-  - **Parameters:**
-    - `df` (`pd.DataFrame`): Raw input data.
+- **Parameters:**
+  - `df` (`pd.DataFrame`): Raw input data.
 
 #### **`show_errors()`**
 
-  Displays all logged errors in a user-friendly format.
+Displays all logged errors in a user-friendly format.
 
 #### **`has_errors() -> bool`**
 
-  Checks if any errors have been logged.
+Checks if any errors have been logged.
 
-  - **Returns:**
-    - `bool`: `True` if there are errors, `False` otherwise.
+- **Returns:**
+  - `bool`: `True` if there are errors, `False` otherwise.
 
 #### **`get_ordered_variable_names() -> List[str]`**
 
-  Retrieves the names of ordinal and nominal variables.
+Retrieves the names of ordinal and nominal variables.
 
-  - **Returns:**
-    - `List[str]`: List of ordered variable names.
+- **Returns:**
+  - `List[str]`: List of ordered variable names.
 
 ---
 
 ### CausalPipeConfig
 
-**`CausalPipeConfig`** is a dataclass that encapsulates all configuration parameters required to set up the **CausalPipe** pipeline.
+**`CausalPipeConfig`** is a Pydantic model that encapsulates all configuration parameters required to set up the **CausalPipe** pipeline. It leverages enums for various configurable options and includes validations to ensure the integrity of the configuration.
 
 #### Attributes
 
 - `variable_types` (`VariableTypes`): Defines the types of variables (`continuous`, `ordinal`, `nominal`) in the dataset.
 - `preprocessing_params` (`DataPreprocessingParams`): Parameters for data preprocessing.
-- `skeleton_method` (`SkeletonMethod`): Method for skeleton identification (e.g., `FASSkeletonMethod`).
-- `orientation_method` (`OrientationMethod`): Method for edge orientation (e.g., `FCIOrientationMethod`).
-- `causal_effect_methods` (`List[CausalEffectMethod]`): List of methods for estimating causal effects (e.g., `CausalEffectMethod`).
-- `study_name` (`str`): Name of the study, used in output file naming.
+- `skeleton_method` (`SkeletonMethod`): Configuration for skeleton identification methods.
+  - `BCSLSkeletonMethod`
+  - `FASSkeletonMethod`
+- `orientation_method` (`OrientationMethod`): Configuration for edge orientation methods.
+  - `FCIOrientationMethod`
+  - `HillClimbingOrientationMethod`
+- `causal_effect_methods` (`Optional[List[CausalEffectMethod]]`): List of methods for estimating causal effects (e.g., `CausalEffectMethod`).
+- `study_name` (`str`): Unique identifier for the study.
 - `output_path` (`str`): Directory where results will be saved.
 - `show_plots` (`bool`): Whether to show plots.
 - `verbose` (`bool`): Enable verbose logging.
@@ -137,104 +141,187 @@ CausalPipe(config: CausalPipeConfig)
     - `ordinal` (`List[str]`, default `[]`): List of ordinal variable names.
     - `nominal` (`List[str]`, default `[]`): List of nominal variable names.
 
+---
+
 #### DataPreprocessingParams
 
 **`DataPreprocessingParams`** configures how data preprocessing is handled in the pipeline.
 
 - **Attributes:**
     - `no_preprocessing` (`bool`, default `False`): Whether to skip preprocessing.
-    - `handling_missing` (`str`, default `"impute"`): Method to handle missing values (`"impute"`, `"drop"`, etc.).
+    - `handling_missing` (`HandlingMissingEnum`, default `HandlingMissingEnum.IMPUTE`): Method to handle missing values.
+      - **Options:**
+        - `"impute"`
+        - `"drop"`
+        - `"error"`
     - `cat_to_codes` (`bool`, default `True`): Whether to convert categorical variables to numeric codes.
     - `standardize` (`bool`, default `True`): Whether to standardize continuous variables.
-    - `imputation_method` (`str`, default `"mice"`): Method for imputation (`"mice"`, etc.).
+    - `imputation_method` (`ImputationMethodEnum`, default `ImputationMethodEnum.MICE`): Method for imputation.
+      - **Options:**
+        - `"mice"`
+        - `"simple"`
     - `use_r_mice` (`bool`, default `True`): Whether to use R's `mice` for imputation.
     - `full_obs_cols` (`Optional[List[str]]`, default `None`): Columns to keep as fully observed.
-    - `keep_only_correlated_with` (`Optional[str]`, default `None`): Feature selection based on correlation with a target variable.
-    - `filter_method` (`str`, default `"mi"`): Method for feature filtering (`"mi"`, `"pearson"`, etc.).
-    - `filter_threshold` (`float`, default `0.1`): Threshold for feature filtering.
+    - `keep_only_correlated_with` (`Optional[List[str]]`, default `None`): List of target variables. Only features correlated with these targets are kept.
+    - `filter_method` (`FilterMethodEnum`, default `FilterMethodEnum.MUTUAL_INFO`): Method to filter out features without correlation with the target.
+      - **Options:**
+        - `"mutual_info"`
+        - `"pearson"`
+        - `"lasso"`
+    - `filter_threshold` (`float`, default `0.1`): Threshold for the filter method. Must be between `0.0` and `1.0`.
     - `kwargs` (`Optional[Dict[str, Any]]`, default `{}`): Additional keyword arguments.
+
+- **Validations:**
+    - `filter_threshold` must be between `0.0` and `1.0`.
+
+---
 
 #### SkeletonMethod
 
-**`SkeletonMethod`** is a base dataclass for configuring skeleton identification methods.
+**`SkeletonMethod`** is a base Pydantic model for configuring skeleton identification methods.
 
 - **Attributes:**
-    - `name` (`str`): Name of the skeleton method.
-    - `conditional_independence_method` (`str`, default `"fisherz"`): Method for conditional independence testing.
-    - `alpha` (`float`, default `0.05`): Significance level for tests.
+    - `name` (`SkeletonMethodNameEnum`): Name of the skeleton method.
+      - **Options:**
+        - `"BCSL"`
+        - `"FAS"`
+    - `conditional_independence_method` (`ConditionalIndependenceMethodEnum`, default `ConditionalIndependenceMethodEnum.FISHERZ`): Method for conditional independence testing.
+      - **Options:**
+        - `"fisherz"`
+        - `"kci"`
+        - `"d_separation"`
+        - `"gsq"`
+        - `"chisq"`
+        - `"mc_fisherz"`
+        - `"mv_fisherz"`
+    - `alpha` (`float`, default `0.05`): Significance level for tests. Must be between `0.0` and `1.0`.
     - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters.
 
-#### BCSLSkeletonMethod
+- **Validations:**
+    - `alpha` must be between `0.0` and `1.0`.
+
+---
+
+##### BCSLSkeletonMethod
 
 **`BCSLSkeletonMethod`** configures the Bootstrap-based Causal Structure Learning (BCSL) method for skeleton identification.
 
 - **Inherits From:** `SkeletonMethod`
 
 - **Attributes:**
-    - `name` (`str`, default `"BCSL"`): Name of the skeleton method.
-    - `num_bootstrap_samples` (`int`, default `100`): Number of bootstrap samples.
-    - `multiple_comparison_correction` (`str`, default `"fdr"`): Method for multiple comparison correction (`"fdr"`, etc.).
+    - `name` (`SkeletonMethodNameEnum`, default `SkeletonMethodNameEnum.BCSL`): Name of the skeleton method.
+    - `num_bootstrap_samples` (`int`, default `100`): Number of bootstrap samples. Must be positive.
+    - `multiple_comparison_correction` (`Optional[MultipleComparisonCorrectionEnum]`, default `None`): Method for multiple comparison correction.
+      - **Options:**
+        - `"fdr"`
+        - `"bonferroni"`
     - `bootstrap_all_edges` (`bool`, default `True`): Whether to bootstrap all edges.
-    - `use_aee_alpha` (`float`, default `0.05`): Alpha level for AEE.
-    - `max_k` (`int`, default `3`): Maximum conditioning set size.
+    - `use_aee_alpha` (`float`, default `0.05`): Alpha level for AEE. Must be between `0.0` and `1.0`.
+    - `max_k` (`int`, default `3`): Maximum conditioning set size. Must be non-negative.
 
-#### FASSkeletonMethod
+- **Validations:**
+    - `num_bootstrap_samples` must be positive.
+    - `use_aee_alpha` must be between `0.0` and `1.0`.
+    - `alpha` (inherited) must be between `0.0` and `1.0`.
+    - `max_k` must be non-negative.
+
+---
+
+##### FASSkeletonMethod
 
 **`FASSkeletonMethod`** configures the Fast Adjacency Search (FAS) method for skeleton identification.
 
 - **Inherits From:** `SkeletonMethod`
 
 - **Attributes:**
-    - `name` (`str`, default `"FAS"`): Name of the skeleton method.
-    - `depth` (`int`, default `3`): Depth parameter for FAS.
+    - `name` (`SkeletonMethodNameEnum`, default `SkeletonMethodNameEnum.FAS`): Name of the skeleton method.
+    - `depth` (`int`, default `3`): Depth parameter for FAS. Must be non-negative.
     - `knowledge` (`Optional[BackgroundKnowledge]`, default `None`): Background knowledge for FAS.
+
+- **Validations:**
+    - `depth` must be non-negative.
+
+- **Configuration:**
+    - `arbitrary_types_allowed = True` (Allows non-Pydantic types like `BackgroundKnowledge`)
+
+---
 
 #### OrientationMethod
 
-**`OrientationMethod`** is a base dataclass for configuring edge orientation methods.
+**`OrientationMethod`** is a base Pydantic model for configuring edge orientation methods.
 
 - **Attributes:**
-      - `name` (`str`, default `"FCI"`): Name of the orientation method.
-      - `conditional_independence_method` (`str`, default `"fisherz"`): Method for conditional independence testing.
+    - `name` (`OrientationMethodNameEnum`): Name of the orientation method.
+      - **Options:**
+        - `"FCI"`
+        - `"Hill Climbing"`
+    - `conditional_independence_method` (`ConditionalIndependenceMethodEnum`, default `ConditionalIndependenceMethodEnum.FISHERZ`): Method for conditional independence testing.
+      - **Options:**
+        - `"fisherz"`
+        - `"kci"`
+        - `"d_separation"`
+        - `"gsq"`
+        - `"chisq"`
+        - `"mc_fisherz"`
+        - `"mv_fisherz"`
 
-#### FCIOrientationMethod
+---
+
+##### FCIOrientationMethod
 
 **`FCIOrientationMethod`** configures the Fast Causal Inference (FCI) method for edge orientation.
 
 - **Inherits From:** `OrientationMethod`
 
 - **Attributes:**
-    - `name` (`str`, default `"FCI"`): Name of the orientation method.
+    - `name` (`OrientationMethodNameEnum`, default `OrientationMethodNameEnum.FCI`): Name of the orientation method.
     - `background_knowledge` (`Optional[BackgroundKnowledge]`, default `None`): Background knowledge for FCI.
-    - `alpha` (`float`, default `0.05`): Significance level for tests.
-    - `max_path_length` (`int`, default `3`): Maximum path length for FCI.
+    - `alpha` (`float`, default `0.05`): Significance level for tests. Must be between `0.0` and `1.0`.
+    - `max_path_length` (`int`, default `3`): Maximum path length for FCI. Must be non-negative.
 
-#### HillClimbingOrientationMethod
+- **Validations:**
+    - `alpha` must be between `0.0` and `1.0`.
+    - `max_path_length` must be non-negative.
+
+- **Configuration:**
+    - `arbitrary_types_allowed = True` (Allows non-Pydantic types like `BackgroundKnowledge`)
+
+---
+
+##### HillClimbingOrientationMethod
 
 **`HillClimbingOrientationMethod`** configures the Hill Climbing method for edge orientation.
 
 - **Inherits From:** `OrientationMethod`
 
 - **Attributes:**
-  - `name` (`str`, default `"Hill Climbing"`): Name of the orientation method.
-  - `max_k` (`int`, default `3`): Maximum conditioning set size.
-  - `multiple_comparison_correction` (`str`, default `"fdr"`): Method for multiple comparison correction (`"fdr"`, etc.).
+    - `name` (`OrientationMethodNameEnum`, default `OrientationMethodNameEnum.HILL_CLIMBING`): Name of the orientation method.
+    - `max_k` (`int`, default `3`): Maximum conditioning set size. Must be non-negative.
+    - `multiple_comparison_correction` (`Optional[MultipleComparisonCorrectionEnum]`, default `None`): Method for multiple comparison correction.
+      - **Options:**
+        - `"fdr"`
+        - `"bonferroni"`
+
+- **Validations:**
+    - `max_k` must be non-negative.
+
+---
 
 #### CausalEffectMethod
 
 **`CausalEffectMethod`** configures the methods used for estimating causal effects.
 
 - **Attributes:**
-  - `name` (`str`, default `"pearson"`): Name of the causal effect estimation method.
-    - **Options:**
-      - `'pearson'`: Partial Pearson Correlation
-      - `'spearman'`: Partial Spearman Correlation
-      - `'mi'`: Conditional Mutual Information
-      - `'kci'`: Kernel Conditional Independence
-      - `'sem'`: Structural Equation Modeling
-      - `'sem-climbing'`: Structural Equation Modeling with Hill Climbing search of the best graph.
-  - `directed` (`bool`, default `True`): Indicates if the method uses a directed graph.
-  - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters for the method.
+    - `name` (`CausalEffectMethodNameEnum`, default `CausalEffectMethodNameEnum.PEARSON`): Name of the causal effect estimation method.
+      - **Options:**
+        - `'pearson'`: Partial Pearson Correlation
+        - `'spearman'`: Partial Spearman Correlation
+        - `'mi'`: Conditional Mutual Information
+        - `'kci'`: Kernel Conditional Independence
+        - `'sem'`: Structural Equation Modeling
+        - `'sem-climbing'`: Structural Equation Modeling with Hill Climbing search of the best graph.
+    - `directed` (`bool`, default `True`): Indicates if the method uses a directed graph.
+    - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters for the method.
 
 ---
 
@@ -265,25 +352,25 @@ SEMScore(
 
 #### **`__call__(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -> Dict[str, Any]`**
 
-  Calculates the score of the given graph based on BIC from SEM fitting.
+Calculates the score of the given graph based on BIC from SEM fitting.
 
-  - **Parameters:**
-    - `general_graph` (`GeneralGraph`): The graph to score.
-    - `compared_to_graph` (`Optional[GeneralGraph]`, default `None`): The graph to compare the given graph against.
+- **Parameters:**
+  - `general_graph` (`GeneralGraph`): The graph to score.
+  - `compared_to_graph` (`Optional[GeneralGraph]`, default `None`): The graph to compare the given graph against.
 
-  - **Returns:**
-    - `Dict[str, Any]`: A dictionary containing the score and additional SEM fitting results.
+- **Returns:**
+  - `Dict[str, Any]`: A dictionary containing the score and additional SEM fitting results.
 
-####  **`exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -> Dict[str, Any]`**
+#### **`exhaustive_results(general_graph: GeneralGraph, compared_to_graph: Optional[GeneralGraph] = None) -> Dict[str, Any]`**
 
-  Fits an SEM model for the given graph and returns the results.
+Fits an SEM model for the given graph and returns the results.
 
-  - **Parameters:**
-    - `general_graph` (`GeneralGraph`): The graph structure to fit.
-    - `compared_to_graph` (`Optional[GeneralGraph]`, default `None`): The graph structure to compare the given graph against.
+- **Parameters:**
+  - `general_graph` (`GeneralGraph`): The graph structure to fit.
+  - `compared_to_graph` (`Optional[GeneralGraph]`, default `None`): The graph structure to compare the given graph against.
 
-  - **Returns:**
-    - `Dict[str, Any]`: A dictionary containing the SEM fitting results.
+- **Returns:**
+  - `Dict[str, Any]`: A dictionary containing the SEM fitting results.
 
 ---
 
@@ -352,6 +439,8 @@ fit_sem_lavaan(
   print(results["fit_summary"])
   ```
 
+---
+
 ### search_best_graph_climber
 
 **`search_best_graph_climber`** searches for the best graph structure using hill-climbing based on SEM fit.
@@ -368,17 +457,17 @@ search_best_graph_climber(
 ```
 
 - **Parameters:**
-  - `data` (`pd.DataFrame`): The dataset used for SEM fitting.
-  - `initial_graph` (`GeneralGraph`): The initial graph structure to start the search.
-  - `node_names` (`Optional[List[str]]`, default `None`): A list of variable names in the dataset.
-  - `max_iter` (`int`, default `1000`): The maximum number of iterations for the hill-climbing search.
-  - `estimator` (`str`, default `"MLM"`): The estimator to use for fitting the SEM model. Options include `"MLM"`, `"MLR"`, `"ULS"`, `"WLSMV"`.
-  - `**kwargs`: Additional keyword arguments.
+    - `data` (`pd.DataFrame`): The dataset used for SEM fitting.
+    - `initial_graph` (`GeneralGraph`): The initial graph structure to start the search.
+    - `node_names` (`Optional[List[str]]`, default `None`): A list of variable names in the dataset.
+    - `max_iter` (`int`, default `1000`): The maximum number of iterations for the hill-climbing search.
+    - `estimator` (`str`, default `"MLM"`): The estimator to use for fitting the SEM model. Options include `"MLM"`, `"MLR"`, `"ULS"`, `"WLSMV"`.
+    - `**kwargs`: Additional keyword arguments.
 
 - **Returns:**
-  - `Tuple[GeneralGraph, Dict[str, Any]]`: A tuple containing:
-    - `best_graph` (`GeneralGraph`): The graph structure with the best SEM fit.
-    - `best_score` (`Dict[str, Any]`): The SEM fitting results for the best graph.
+    - `Tuple[GeneralGraph, Dict[str, Any]]`: A tuple containing:
+        - `best_graph` (`GeneralGraph`): The graph structure with the best SEM fit.
+        - `best_score` (`Dict[str, Any]`): The SEM fitting results for the best graph.
 
 - **Usage Example:**
 
@@ -399,3 +488,419 @@ search_best_graph_climber(
   print(best_graph)
   print(best_score["fit_measures"])
   ```
+
+---
+
+## Updated Configuration Classes
+
+Below are the updated Pydantic classes used for configuring the **CausalPipe** pipeline. These classes incorporate enums for various configurable options and include validations to ensure configuration integrity.
+
+### Enumerations
+
+```python
+from enum import Enum
+
+class HandlingMissingEnum(str, Enum):
+    IMPUTE = "impute"
+    DROP = "drop"
+    ERROR = "error"
+
+class ImputationMethodEnum(str, Enum):
+    MICE = "mice"
+    SIMPLE = "simple"
+
+class FilterMethodEnum(str, Enum):
+    MUTUAL_INFO = "mutual_info"
+    PEARSON = "pearson"
+    LASSO = "lasso"
+
+class SkeletonMethodNameEnum(str, Enum):
+    BCSL = "BCSL"
+    FAS = "FAS"
+
+class ConditionalIndependenceMethodEnum(str, Enum):
+    FISHERZ = "fisherz"
+    KCI = "kci"
+    D_SEPARATION = "d_separation"
+    GSQ = "gsq"
+    CHISQ = "chisq"
+    MC_FISHERZ = "mc_fisherz"
+    MV_FISHERZ = "mv_fisherz"
+
+class MultipleComparisonCorrectionEnum(str, Enum):
+    FDR = "fdr"
+    BONFERRONI = "bonferroni"
+
+class OrientationMethodNameEnum(str, Enum):
+    FCI = "FCI"
+    HILL_CLIMBING = "Hill Climbing"
+
+class CausalEffectMethodNameEnum(str, Enum):
+    PEARSON = "pearson"
+    SPEARMAN = "spearman"
+    MI = "mi"
+    KCI = "kci"
+    SEM = "sem"
+    SEM_CLIMBING = "sem-climbing"
+```
+
+### Pydantic Models with Validations
+
+#### VariableTypes
+
+```python
+from pydantic import BaseModel, Field
+from typing import List
+
+class VariableTypes(BaseModel):
+    """
+    Define variable types for the dataset.
+    """
+
+    continuous: List[str]
+    ordinal: List[str] = Field(default_factory=list)
+    nominal: List[str] = Field(default_factory=list)
+```
+
+#### DataPreprocessingParams
+
+```python
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Dict, Any
+
+class DataPreprocessingParams(BaseModel):
+    """
+    Parameters for data preprocessing.
+
+    Attributes:
+        no_preprocessing (bool): True if no preprocessing is required.
+        handling_missing (HandlingMissingEnum): Method to handle missing values.
+        cat_to_codes (bool): True if categorical variables should be converted to codes.
+        standardize (bool): True if the data should be standardized.
+        imputation_method (ImputationMethodEnum): Method to impute missing values.
+        use_r_mice (bool): True if R MICE should be used for imputation.
+        full_obs_cols (Optional[List[str]]): Columns with full observations - row is dropped if any missing values.
+        keep_only_correlated_with (Optional[List[str]]): List of target variables. Only features correlated with these targets are kept.
+        filter_method (FilterMethodEnum): Method to filter out features without correlation with the target.
+        filter_threshold (float): Threshold for the filter method.
+        kwargs (Optional[Dict[str, Any]]): Additional parameters for the preprocessing.
+    """
+
+    no_preprocessing: bool = False
+    handling_missing: HandlingMissingEnum = HandlingMissingEnum.IMPUTE
+    cat_to_codes: bool = True
+    standardize: bool = True
+
+    # Imputation parameters
+    imputation_method: ImputationMethodEnum = ImputationMethodEnum.MICE
+    use_r_mice: bool = True
+    full_obs_cols: Optional[List[str]] = None
+
+    # Filter out features without correlation with the target
+    keep_only_correlated_with: Optional[List[str]] = None
+    filter_method: FilterMethodEnum = FilterMethodEnum.MUTUAL_INFO
+    filter_threshold: float = 0.1
+
+    kwargs: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+    # Validation for filter_threshold
+    @field_validator("filter_threshold")
+    @classmethod
+    def check_filter_threshold(cls, v):
+        if not (0.0 <= v <= 1.0):
+            raise ValueError("filter_threshold must be between 0.0 and 1.0")
+        return v
+
+    class Config:
+        validate_assignment = True
+```
+
+#### SkeletonMethod
+
+```python
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Dict, Any
+
+class SkeletonMethod(BaseModel):
+    """
+    Configuration for skeleton identification.
+    """
+
+    name: SkeletonMethodNameEnum
+    conditional_independence_method: ConditionalIndependenceMethodEnum = (
+        ConditionalIndependenceMethodEnum.FISHERZ
+    )
+    alpha: float = 0.05
+    params: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+    # Validation for alpha
+    @field_validator("alpha")
+    @classmethod
+    def check_alpha(cls, v):
+        if not (0.0 < v < 1.0):
+            raise ValueError("alpha must be between 0.0 and 1.0")
+        return v
+
+    class Config:
+        validate_assignment = True
+```
+
+##### BCSLSkeletonMethod
+
+```python
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Dict, Any
+
+class BCSLSkeletonMethod(SkeletonMethod):
+    """
+    Configuration for BCSL skeleton identification.
+    """
+
+    name: SkeletonMethodNameEnum = SkeletonMethodNameEnum.BCSL
+    num_bootstrap_samples: int = 100
+    multiple_comparison_correction: Optional[MultipleComparisonCorrectionEnum] = None
+    bootstrap_all_edges: bool = True
+    use_aee_alpha: float = 0.05
+    max_k: int = 3
+
+    # Validation for num_bootstrap_samples
+    @field_validator("num_bootstrap_samples")
+    @classmethod
+    def check_num_bootstrap_samples(cls, v):
+        if v <= 0:
+            raise ValueError("num_bootstrap_samples must be positive")
+        return v
+
+    # Validation for use_aee_alpha and alpha
+    @field_validator("use_aee_alpha", "alpha", mode="before")
+    @classmethod
+    def check_alpha_values(cls, v):
+        if not (0.0 < v < 1.0):
+            raise ValueError("alpha values must be between 0.0 and 1.0")
+        return v
+
+    # Validation for max_k
+    @field_validator("max_k")
+    @classmethod
+    def check_max_k(cls, v):
+        if v < 0:
+            raise ValueError("max_k must be non-negative")
+        return v
+```
+
+##### FASSkeletonMethod
+
+```python
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional
+from causallearn.utils.PCUtils.BackgroundKnowledge import BackgroundKnowledge
+
+class FASSkeletonMethod(SkeletonMethod):
+    """
+    Configuration for FAS skeleton identification.
+    """
+
+    name: SkeletonMethodNameEnum = SkeletonMethodNameEnum.FAS
+    depth: int = 3
+    knowledge: Optional[BackgroundKnowledge] = None
+
+    # Validation for depth
+    @field_validator("depth")
+    @classmethod
+    def check_depth(cls, v):
+        if v < 0:
+            raise ValueError("depth must be non-negative")
+        return v
+
+    class Config:
+        arbitrary_types_allowed = True  # Allows non-Pydantic types like BackgroundKnowledge
+```
+
+---
+
+#### OrientationMethod
+
+```python
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any
+
+class OrientationMethod(BaseModel):
+    """
+    Configuration for edge orientation.
+    """
+
+    name: OrientationMethodNameEnum
+    conditional_independence_method: ConditionalIndependenceMethodEnum = (
+        ConditionalIndependenceMethodEnum.FISHERZ
+    )
+
+    class Config:
+        validate_assignment = True
+```
+
+##### FCIOrientationMethod
+
+```python
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional
+from causallearn.utils.PCUtils.BackgroundKnowledge import BackgroundKnowledge
+
+class FCIOrientationMethod(OrientationMethod):
+    """
+    Configuration for FCI orientation method.
+    """
+
+    name: OrientationMethodNameEnum = OrientationMethodNameEnum.FCI
+    background_knowledge: Optional[BackgroundKnowledge] = None
+    alpha: float = 0.05
+    max_path_length: int = 3
+
+    # Validation for alpha
+    @field_validator("alpha")
+    @classmethod
+    def check_alpha(cls, v):
+        if not (0.0 < v < 1.0):
+            raise ValueError("alpha must be between 0.0 and 1.0")
+        return v
+
+    # Validation for max_path_length
+    @field_validator("max_path_length")
+    @classmethod
+    def check_max_path_length(cls, v):
+        if v < 0:
+            raise ValueError("max_path_length must be non-negative")
+        return v
+
+    class Config:
+        arbitrary_types_allowed = True  # Allows non-Pydantic types like BackgroundKnowledge
+```
+
+##### HillClimbingOrientationMethod
+
+```python
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Dict, Any
+
+class HillClimbingOrientationMethod(OrientationMethod):
+    """
+    Configuration for Hill Climbing orientation method.
+    """
+
+    name: OrientationMethodNameEnum = OrientationMethodNameEnum.HILL_CLIMBING
+    max_k: int = 3
+    multiple_comparison_correction: Optional[MultipleComparisonCorrectionEnum] = None
+
+    # Validation for max_k
+    @field_validator("max_k")
+    @classmethod
+    def check_max_k(cls, v):
+        if v < 0:
+            raise ValueError("max_k must be non-negative")
+        return v
+```
+
+---
+
+#### CausalEffectMethod
+
+```python
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any
+
+class CausalEffectMethod(BaseModel):
+    """
+    Configuration for causal effect estimation methods.
+
+    Attributes:
+        name (CausalEffectMethodNameEnum): Name of the method.
+        directed (bool): True if the method starts from the directed graph,
+                        False if it will use the undirected graph (Markov Blanket / General Skeleton).
+        params (Optional[Dict[str, Any]]): Additional parameters for the method.
+    """
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
+    directed: bool = True
+    params: Optional[Dict[str, Any]] = Field(default_factory=dict)
+```
+
+---
+
+#### CausalPipeConfig
+
+```python
+from pydantic import BaseModel, Field
+from typing import List, Optional
+import uuid
+
+class CausalPipeConfig(BaseModel):
+    """
+    Comprehensive configuration for CausalPipe.
+
+    Attributes:
+        variable_types (VariableTypes): Definitions of variable types.
+        preprocessing_params (DataPreprocessingParams): Data preprocessing parameters.
+        skeleton_method (SkeletonMethod): Configuration for skeleton identification.
+        orientation_method (OrientationMethod): Configuration for edge orientation.
+        causal_effect_methods (Optional[List[CausalEffectMethod]]): List of causal effect estimation methods.
+        study_name (str): Unique identifier for the study.
+        output_path (str): Path to save the results.
+        show_plots (bool): Whether to display plots.
+        verbose (bool): Whether to enable verbose logging.
+    """
+
+    variable_types: VariableTypes = Field(
+        default_factory=lambda: VariableTypes(continuous=[], ordinal=[], nominal=[])
+    )
+    preprocessing_params: DataPreprocessingParams = Field(
+        default_factory=DataPreprocessingParams
+    )
+    skeleton_method: SkeletonMethod = Field(default_factory=FASSkeletonMethod)
+    orientation_method: OrientationMethod = Field(default_factory=FCIOrientationMethod)
+    causal_effect_methods: Optional[List[CausalEffectMethod]] = Field(
+        default_factory=lambda: [CausalEffectMethod()]
+    )
+    study_name: str = Field(default_factory=lambda: f"study_{uuid.uuid4()}")
+    output_path: str = "./output/causal_toolkit_results"
+    show_plots: bool = True
+    verbose: bool = False
+
+    class Config:
+        arbitrary_types_allowed = True
+        validate_assignment = True
+```
+
+---
+
+### Enumerations Explained
+
+- **`HandlingMissingEnum`**: Defines methods to handle missing data.
+  - `"impute"`: Fill missing values using imputation.
+  - `"drop"`: Remove rows with missing values.
+  - `"error"`: Raise an error if missing values are found.
+
+- **`ImputationMethodEnum`**: Specifies the imputation technique.
+  - `"mice"`: Multivariate Imputation by Chained Equations.
+  - `"simple"`: Simple imputation methods like mean or median.
+
+- **`FilterMethodEnum`**: Determines the method for feature filtering based on correlation.
+  - `"mutual_info"`: Mutual Information.
+  - `"pearson"`: Pearson Correlation.
+  - `"lasso"`: Lasso Regression for feature selection.
+
+- **`SkeletonMethodNameEnum`**: Names of skeleton identification methods.
+  - `"BCSL"`: Bootstrap-based Causal Structure Learning.
+  - `"FAS"`: Fast Adjacency Search.
+
+- **`ConditionalIndependenceMethodEnum`**: Methods used for conditional independence testing.
+  - `"fisherz"`, `"kci"`, `"d_separation"`, `"gsq"`, `"chisq"`, `"mc_fisherz"`, `"mv_fisherz"`.
+
+- **`MultipleComparisonCorrectionEnum`**: Techniques to correct for multiple comparisons.
+  - `"fdr"`: False Discovery Rate.
+  - `"bonferroni"`: Bonferroni Correction.
+
+- **`OrientationMethodNameEnum`**: Names of edge orientation methods.
+  - `"FCI"`: Fast Causal Inference.
+  - `"Hill Climbing"`: Hill Climbing Algorithm.
+
+- **`CausalEffectMethodNameEnum`**: Names of methods for estimating causal effects.
+  - `'pearson'`, `'spearman'`, `'mi'`, `'kci'`, `'sem'`, `'sem-climbing'`.
