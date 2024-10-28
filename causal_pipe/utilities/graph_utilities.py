@@ -246,9 +246,10 @@ def invert_edge(edge: Edge):
     )
 
 
-def general_graph_to_sem_model(general_graph: GeneralGraph) -> str:
+def general_graph_to_sem_model(general_graph: GeneralGraph) -> Tuple[str, List[str]]:
     """
     Converts a GeneralGraph instance to a lavaan SEM model string.
+    Adds variance to exogenous variables and residual covariances for undirected edges.
 
     Parameters
     ----------
@@ -259,9 +260,12 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> str:
     -------
     model_str : str
         A string representing the SEM model in lavaan syntax.
+    exogenous_variables : List[str]
+        A list of exogenous variables (nodes with no incoming edges).
     """
     node_list = general_graph.get_nodes()
     node_names = [node.get_name() for node in node_list]
+    exogenous_variables = set(node_names)
     n = general_graph.get_num_nodes()
     node_map = general_graph.get_node_map()
 
@@ -270,6 +274,7 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> str:
     # Collect undirected edges: list of (node1, node2)
     undirected_edges: List[Tuple[str, str]] = []
 
+    seen_nodes = set()
     for i in range(n):
         for j in range(i + 1, n):
             node_i = node_list[i]
@@ -278,6 +283,7 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> str:
             edge_j = general_graph.get_edge(node_j, node_i)
             if not edge_i and not edge_j:
                 continue
+
             # Check if there's a directed edge from node_i to node_j
             if general_graph.is_adjacent_to(node_i, node_j):
                 edge = general_graph.get_edge(node_i, node_j)
@@ -285,22 +291,35 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> str:
                 edge_node_2 = edge.node2
                 node1_name = edge_node_1.get_name()
                 node2_name = edge_node_2.get_name()
+                seen_nodes.add(node1_name)
+                seen_nodes.add(node2_name)
                 if general_graph.is_directed_from_to(edge_node_1, edge_node_2):
                     directed_edges.append((node1_name, node2_name))
+                    exogenous_variables.discard(node2_name)
                 # Check if there's an undirected edge between node_i and node_j
                 elif general_graph.is_undirected_from_to(edge_node_1, edge_node_2):
                     # To avoid duplicates, ensure node_i < node_j
                     undirected_edges.append((node1_name, node2_name))
+                    exogenous_variables.discard(node2_name)
+                    exogenous_variables.discard(node1_name)
                 elif edge_b_is_not_an_ancestor_a(edge):
                     directed_edges.append((node1_name, node2_name))
+                    exogenous_variables.discard(node2_name)
                 elif edge_with_latent_common_cause(edge):
                     undirected_edges.append((node1_name, node2_name))
+                    exogenous_variables.discard(node2_name)
+                    exogenous_variables.discard(node1_name)
                 elif edge_no_d_separation(edge):
                     undirected_edges.append((node1_name, node2_name))
+                    exogenous_variables.discard(node2_name)
+                    exogenous_variables.discard(node1_name)
                 else:
                     raise ValueError("Should not reach here.")
             else:
                 raise ValueError("Should not reach here.")
+
+    # Only keep exogenous variables that are in the graph
+    exogenous_variables = list(exogenous_variables.intersection(seen_nodes))
 
     # Group directed edges by target
     regressions = {}
@@ -335,10 +354,17 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> str:
             model_lines.append(f"    {node1} ~~ {nodes2_str}")
         model_lines.append("")  # Add an empty line for separation
 
+    # Add variances for exogenous variables
+    if exogenous_variables:
+        model_lines.append("  # variances")
+        for exog in exogenous_variables:
+            model_lines.append(f"    {exog} ~~ {exog}")
+        model_lines.append("")  # Add an empty line for separation
+
     # Combine all lines into a single string
     model_str = "\n".join(model_lines)
 
-    return model_str
+    return model_str, exogenous_variables
 
 
 def get_all_directed_edges_list(graph: GeneralGraph) -> List[Tuple[int, int]]:

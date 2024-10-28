@@ -41,6 +41,7 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     # Generate Var1 and Var2 as continuous variables influenced by Var0
     Var1_continuous = np.random.normal(0, 1, n_samples) + Var0 * 3
     Var2_continuous = np.random.normal(0, 1, n_samples) + Var0
+    Ord3_continuous = np.random.normal(0, 1, n_samples)
 
     # Discretize Var1 and Var2 into ordinal categories: Low, Medium, High
     Ord1 = pd.cut(
@@ -57,13 +58,18 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
         include_lowest=True,
     ).codes  # Convert categories to integer codes
 
-    # Generate dependent continuous variables Var3 and Var4 influenced by Var1 and Var2 respectively
-    Var3 = -2 * Ord1 + np.random.normal(
-        0, 1, n_samples
-    )  # Var3 depends on Var1_continuous
-    Var4 = 0.5 * Ord2 + np.random.normal(
-        0, 1, n_samples
-    )  # Var4 depends on Var2_continuous
+    Ord3 = pd.cut(
+        Ord3_continuous,
+        bins=3,
+        labels=["Low", "Medium", "High"],
+        include_lowest=True,
+    ).codes  # Convert categories to integer codes
+
+    # Generate dependent continuous variables Var3 and Var4
+    Var3 = -2 * Ord1 + np.random.normal(0, 1, n_samples)  # Var3 depends on Ord1
+    Var4 = (
+        0.5 * Ord2 + Ord3 + np.random.normal(0, 1, n_samples)
+    )  # Var4 depends on Ord2 and Ord3
 
     # Generate Var5 as a dependent variable influenced by Var3 and Var4
     Var5 = (
@@ -79,6 +85,7 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
             "Var0": Var0,
             "Ord1": Ord1,  # Ordinal variable
             "Ord2": Ord2,  # Ordinal variable
+            "Ord3": Ord3,  # Ordinal variable
             "Var3": Var3,
             "Var4": Var4,
             "Var5": Var5,
@@ -88,7 +95,8 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
 
     # Update the configuration to specify variable types
     config.variable_types = VariableTypes(
-        continuous=["Var0", "Var3", "Var4", "Var5", "Var6"], ordinal=["Ord1", "Ord2"]
+        continuous=["Var0", "Var3", "Var4", "Var5", "Var6"],
+        ordinal=["Ord1", "Ord2", "Ord3"],
     )
 
     config.study_name = "pipe_easy_dataset_with_ordinal"
@@ -111,7 +119,7 @@ def create_true_causal_graph_easy_with_ordinal() -> GeneralGraph:
     - GeneralGraph: The true causal graph.
     """
     # Define node names
-    node_names = ["Var0", "Ord1", "Ord2", "Var3", "Var4", "Var5"]
+    node_names = ["Var0", "Ord1", "Ord2", "Ord3", "Var3", "Var4", "Var5", "Var6"]
 
     # Create GraphNode instances for each variable
     nodes = {name: GraphNode(name) for name in node_names}
@@ -125,6 +133,7 @@ def create_true_causal_graph_easy_with_ordinal() -> GeneralGraph:
         ("Var0", "Ord2"),
         ("Ord1", "Var3"),
         ("Ord2", "Var4"),
+        ("Ord3", "Var4"),
         ("Var3", "Var5"),
         ("Var4", "Var5"),
     ]

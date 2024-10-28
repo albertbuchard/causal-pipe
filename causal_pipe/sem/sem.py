@@ -18,6 +18,20 @@ from causal_pipe.utilities.model_comparison_utilities import (
 )
 
 
+def format_ordered_for_sem(data: pd.DataFrame, ordered: List[str]) -> pd.DataFrame:
+    """
+    Format the data for SEM with ordered variables.
+    """
+    # Create a copy of the data
+    data = data.copy()
+    # Convert the ordered variables to ordered factors
+    for var in ordered:
+        if var not in data.columns:
+            raise ValueError(f"Variable '{var}' not found in the data.")
+        data[var] = data[var].astype("category").cat.codes
+    return data
+
+
 def fit_sem_lavaan(
     data: pd.DataFrame,
     model_1_string: str,
@@ -25,6 +39,8 @@ def fit_sem_lavaan(
     estimator: str = "MLM",
     model_2_string: Optional[str] = None,
     ordered: Optional[List[str]] = None,
+    exogenous_vars_model_1: Optional[List[str]] = None,
+    exogenous_vars_model_2: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Fits a Structural Equation Model (SEM) using the specified model string and returns comprehensive results.
@@ -106,6 +122,25 @@ def fit_sem_lavaan(
     if estimator == "ML":
         nonnest2 = rpackages.importr("nonnest2")
 
+    # Load the lavaan package in R
+    ro.r("library(lavaan)")
+
+    # Make sure no exogenous variables are included in the ordered list
+    ordered_without_exogenous_model_1 = ordered
+    ordered_without_exogenous_model_2 = ordered
+    if ordered:
+        data = format_ordered_for_sem(data, ordered=ordered)
+        if exogenous_vars_model_1:
+            ordered_without_exogenous_model_1 = [
+                var for var in ordered if var not in exogenous_vars_model_1
+            ]
+
+        if model_2_string:
+            if exogenous_vars_model_2:
+                ordered_without_exogenous_model_2 = [
+                    var for var in ordered if var not in exogenous_vars_model_2
+                ]
+
     # Convert the pandas DataFrame to R DataFrame
     with localconverter(ro.default_converter + pandas2ri.converter):
         r_data = ro.conversion.py2rpy(data)
@@ -115,17 +150,16 @@ def fit_sem_lavaan(
     ro.globalenv["model_string"] = model_1_string
     ro.globalenv["estimator"] = estimator
 
-    # Load the lavaan package in R
-    ro.r("library(lavaan)")
-
     # Fit the SEM model with the ordered argument if provided
     try:
-        if ordered:
+        if ordered_without_exogenous_model_1:
             if not isinstance(ordered, list):
                 raise TypeError(
                     "The 'ordered' parameter must be a list of variable names."
                 )
-            ro.globalenv["ordered_vars"] = ro.StrVector(ordered)
+            ro.globalenv["ordered_vars"] = ro.StrVector(
+                ordered_without_exogenous_model_1
+            )
             # ro.globalenv["model_string"] = model_string_convert_residual_cov_to_factor(model_1_string)
             ro.r(
                 """
@@ -421,17 +455,19 @@ def fit_sem_lavaan(
         # Fit the second model
         ro.globalenv["model_2_string"] = model_2_string
         try:
-            if ordered is not None:
+            if ordered_without_exogenous_model_2 is not None:
                 if not isinstance(ordered, list):
                     raise TypeError(
                         "The 'ordered' parameter must be a list of variable names."
                     )
-                ro.globalenv["ordered_vars"] = ro.StrVector(ordered)
+                ro.globalenv["ordered_vars_model_2"] = ro.StrVector(
+                    ordered_without_exogenous_model_2
+                )
                 ro.r(
                     """
                     fit.mod2 <- sem(model = model_2_string, data = data, std.lv = TRUE, 
-                                   estimator = estimator, representation = "RAM", 
-                                   ordered = ordered_vars)
+                                   estimator = estimator, 
+                                   ordered = ordered_vars_model_2)
                     """
                 )
             else:
@@ -701,11 +737,14 @@ class SEMScore:
             A dictionary containing the SEM fitting results.
         """
         # Convert the graph to a SEM model string
-        model_str = general_graph_to_sem_model(general_graph)
+        model_str, exogenous_vars = general_graph_to_sem_model(general_graph)
 
         compare_model_string = None
         if compared_to_graph is not None:
-            compare_model_string = general_graph_to_sem_model(compared_to_graph)
+            compare_model_string, compare_exogenous_vars = general_graph_to_sem_model(
+                compared_to_graph
+            )
+            exogenous_vars = list(set(exogenous_vars + compare_exogenous_vars))
 
         # Fit the SEM model
         if self.estimator == "bayesian":
@@ -725,6 +764,7 @@ class SEMScore:
                 estimator=self.estimator,
                 model_2_string=compare_model_string,
                 ordered=self.ordered,
+                exogenous_vars_model_1=exogenous_vars,
             )
 
         return results

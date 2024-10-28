@@ -8,6 +8,7 @@ import pandas as pd
 from bcsl.bcsl import BCSL
 from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
 from causallearn.graph.GeneralGraph import GeneralGraph
+from causallearn.search.FCMBased.lingam.utils import get_exo_variables
 from causallearn.utils.FAS import fas
 from causallearn.utils.cit import CIT
 
@@ -535,7 +536,9 @@ class CausalPipe:
                     directed_graph = unify_edge_types_directed_undirected(
                         self.directed_graph
                     )
-                    model_str = general_graph_to_sem_model(directed_graph)
+                    model_str, exogenous_vars = general_graph_to_sem_model(
+                        directed_graph
+                    )
 
                     ordered = self.get_ordered_variable_names()
                     default_estimator = "ML"
@@ -548,6 +551,7 @@ class CausalPipe:
                         var_names=None,
                         estimator=method.params.get("estimator", default_estimator),
                         ordered=ordered,
+                        exogenous_vars_model_1=exogenous_vars,
                     )
                     coef_graph, edges_with_coefficients = (
                         add_edge_coefficients_from_sem_fit(
@@ -563,7 +567,18 @@ class CausalPipe:
                         title="SEM Result",
                         labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
-                        output_path=os.path.join(out_sem_dir, "sem_result.png"),
+                        output_path=os.path.join(
+                            out_sem_dir, "sem_result_with_coefficients.png"
+                        ),
+                    )
+                    visualize_graph(
+                        directed_graph,
+                        title="SEM Result",
+                        labels=dict(zip(range(len(df.columns)), df.columns)),
+                        show=show_plot,
+                        output_path=os.path.join(
+                            out_sem_dir, "sem_result_without_coefficients.png"
+                        ),
                     )
                     dump_json_to(
                         data=self.causal_effects[method.name],
@@ -603,6 +618,22 @@ class CausalPipe:
                         labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
                         output_path=os.path.join(out_sem_dir, "best_graph.png"),
+                    )
+                    coef_graph, edges_with_coefficients = (
+                        add_edge_coefficients_from_sem_fit(
+                            best_graph,
+                            model_output=self.causal_effects[method.name],
+                        )
+                    )
+                    visualize_graph(
+                        coef_graph,
+                        title="Best Graph Climber Result With Coefficients",
+                        edges=edges_with_coefficients,
+                        labels=dict(zip(range(len(df.columns)), df.columns)),
+                        show=show_plot,
+                        output_path=os.path.join(
+                            out_sem_dir, "best_graph_with_coefficients.png"
+                        ),
                     )
                     if sem_results is None:
                         sem_results = {"fit_summary": "Failure"}
