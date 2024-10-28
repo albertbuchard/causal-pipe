@@ -133,8 +133,8 @@ def prepare_data_for_causal_discovery(
         initial_columns = data.columns
         if verbose:
             print("Filtering out uncorrelated columns...")
-        if filter_method == "pearson":  # Pearson correlation
-            corr_matrix = data.corr()
+        if filter_method in ["pearson", "spearman"]:
+            corr_matrix = data.corr(method=filter_method)
             correlated_cols = (
                 corr_matrix[
                     corr_matrix[keep_only_correlated_with].abs() > filter_threshold
@@ -147,7 +147,9 @@ def prepare_data_for_causal_discovery(
             ]
             data.drop(uncorrelated_cols, axis=1, inplace=True)
             if verbose:
-                print(f"Feature selection using Pearson correlation is complete.")
+                print(
+                    f"Feature selection using {filter_method} correlation is complete."
+                )
         elif filter_method == "mutual_info":  # Mutual information
             selected_features = set(keep_only_correlated_with)
             X = data.drop(columns=keep_only_correlated_with)

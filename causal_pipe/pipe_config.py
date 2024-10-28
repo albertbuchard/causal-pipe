@@ -31,6 +31,7 @@ class ImputationMethodEnum(str, Enum):
 class FilterMethodEnum(str, Enum):
     MUTUAL_INFO = "mutual_info"
     PEARSON = "pearson"
+    SPEARMAN = "spearman"
     LASSO = "lasso"
 
 

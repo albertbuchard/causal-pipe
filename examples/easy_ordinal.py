@@ -104,7 +104,8 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
         # For ordinal data
         CausalEffectMethod(name="sem", directed=True)
     ]
-    # config.preprocessing_params.keep_only_correlated_with = ["Var0", "Var5"]
+    config.preprocessing_params.keep_only_correlated_with = ["Var0", "Var5"]
+    config.preprocessing_params.filter_method = "spearman"
 
     # Compare different causal discovery pipelines using the generated data and configuration
     compare_pipelines(data, config=config)
