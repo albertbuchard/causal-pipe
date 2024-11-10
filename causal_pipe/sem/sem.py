@@ -196,6 +196,48 @@ def fit_sem_lavaan(
         print(e, file=sys.stderr)
         summary_fit = ""
 
+    # Extract non-standardized parameter estimates
+    try:
+        ro.r(
+            """
+            parameter_estimates <- parameterEstimates(fit.mod, standardized = FALSE)
+            """
+        )
+        unstandardized_parameter_estimates = ro.r("parameter_estimates")
+        unstandardized_parameter_estimates_df = pandas2ri.rpy2py(
+            unstandardized_parameter_estimates
+        )
+        print("\nNon-Standardized Parameter Estimates:")
+        print(unstandardized_parameter_estimates_df)
+    except Exception as e:
+        print(
+            "Error in extracting non-standardized parameter estimates from the SEM model:",
+            file=sys.stderr,
+        )
+        print(e, file=sys.stderr)
+        unstandardized_parameter_estimates_df = None
+
+    # Extract standardized parameter estimates
+    try:
+        ro.r(
+            """
+            standardized_parameter_estimates <- parameterEstimates(fit.mod, standardized = TRUE)
+            """
+        )
+        standardized_parameter_estimates = ro.r("standardized_parameter_estimates")
+        standardized_parameter_estimates_df = pandas2ri.rpy2py(
+            standardized_parameter_estimates
+        )
+        print("\nStandardized Parameter Estimates:")
+        print(standardized_parameter_estimates_df)
+    except Exception as e:
+        print(
+            "Error in extracting standardized parameter estimates from the SEM model:",
+            file=sys.stderr,
+        )
+        print(e, file=sys.stderr)
+        standardized_parameter_estimates_df = None
+
     # Extract log-likelihood
     log_likelihood = None
     if estimator.startswith("ML"):
@@ -593,6 +635,12 @@ def fit_sem_lavaan(
         "model_1_string": model_1_string,
         "fit_summary": summary_fit,
         "fit_measures": fit_measures,
+        "unstandardized_parameter_estimates": dataframe_to_json_compatible_list(
+            unstandardized_parameter_estimates_df
+        ),
+        "standardized_parameter_estimates": dataframe_to_json_compatible_list(
+            standardized_parameter_estimates_df
+        ),
         "measurement_model": dataframe_to_json_compatible_list(measurement_model_df),
         "structural_model": dataframe_to_json_compatible_list(structural_model_df),
         "residual_covariances": dataframe_to_json_compatible_list(
