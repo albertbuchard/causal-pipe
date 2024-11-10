@@ -13,7 +13,7 @@ from examples.utilities import compare_pipelines
 
 def compare_easy_dataset(config: CausalPipeConfig):
     # Generate synthetic data for testing
-    np.random.seed(43)
+    np.random.seed(config.seed)
 
     # Define True Causal Graph
     true_graph = create_true_causal_graph_easy()

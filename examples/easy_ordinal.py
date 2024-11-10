@@ -25,7 +25,7 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     - config (CausalPipeConfig): Configuration object for the causal pipeline.
     """
     # Set random seed for reproducibility
-    np.random.seed(43)
+    np.random.seed(config.seed)
 
     # Define and visualize the true causal graph
     true_graph = create_true_causal_graph_easy_with_ordinal()

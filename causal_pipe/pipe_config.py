@@ -317,6 +317,7 @@ class CausalPipeConfig(BaseModel):
     output_path: str = "./output/causal_toolkit_results"
     show_plots: bool = True
     verbose: bool = False
+    seed: int = 42
 
     class Config:
         arbitrary_types_allowed = True

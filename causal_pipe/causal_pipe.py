@@ -1,28 +1,27 @@
-import os
-import warnings
 import logging
+import os
 import traceback
+import warnings
 from typing import Optional, Dict, Any, Tuple, List, Set
 
 import pandas as pd
 from bcsl.bcsl import BCSL
 from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
 from causallearn.graph.GeneralGraph import GeneralGraph
-from causallearn.search.FCMBased.lingam.utils import get_exo_variables
 from causallearn.utils.FAS import fas
 from causallearn.utils.cit import CIT
 
+from causal_pipe.causal_discovery.static_causal_discovery import (
+    prepare_data_for_causal_discovery,
+    perform_data_validity_checks,
+    visualize_graph,
+)
 from causal_pipe.imputation.imputation import perform_multiple_imputation
 from causal_pipe.partial_correlations.partial_correlations import (
     compute_partial_correlations,
 )
 from causal_pipe.preprocess.utilities import ensure_data_types
 from causal_pipe.sem.sem import fit_sem_lavaan, search_best_graph_climber
-from causal_pipe.causal_discovery.static_causal_discovery import (
-    prepare_data_for_causal_discovery,
-    perform_data_validity_checks,
-    visualize_graph,
-)
 from causal_pipe.utilities.graph_utilities import (
     copy_graph,
     unify_edge_types_directed_undirected,
@@ -39,7 +38,7 @@ from .pipe_config import (
     HillClimbingOrientationMethod,
     VariableTypes,
 )
-from .utilities.utilities import dump_json_to
+from .utilities.utilities import dump_json_to, set_seed_python_and_r
 
 
 class CausalPipe:
@@ -83,7 +82,12 @@ class CausalPipe:
         self.root_output_folder = config.output_path
         self.output_path = os.path.join(self.root_output_folder, self.study_name)
         self.verbose = config.verbose
+        self.seed = config.seed
 
+        # Set random seed
+        set_seed_python_and_r(self.seed)
+
+        # Create output directory
         os.makedirs(self.output_path, exist_ok=True)
 
         # Set up logging

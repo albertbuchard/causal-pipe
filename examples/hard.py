@@ -14,7 +14,7 @@ from examples.utilities import compare_pipelines
 
 def compare_hard_dataset(config: CausalPipeConfig):
     # Generate synthetic data for testing
-    np.random.seed(42)
+    np.random.seed(config.seed)
 
     n_samples = 1000  # Increased sample size for complexity
 
