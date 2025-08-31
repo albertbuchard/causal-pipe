@@ -853,6 +853,14 @@ def search_best_graph_climber(
     node_names: Optional[List[str]] = None,
     max_iter: int = 1000,
     estimator: str = "MLM",
+    finalize_with_resid_covariances: bool = False,
+    mi_cutoff: float = 10.0,
+    sepc_cutoff: float = 0.10,
+    max_add: int = 5,
+    delta_stop: float = 0.003,
+    whitelist_pairs: Optional[pd.DataFrame] = None,
+    forbid_pairs: Optional[pd.DataFrame] = None,
+    same_occasion_regex: Optional[str] = None,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
     """
@@ -876,7 +884,14 @@ def search_best_graph_climber(
     -------
     Tuple[GeneralGraph, Dict[str, Any]]
         - best_graph: The graph structure with the best SEM fit.
-        - best_score: The SEM fitting results for the best graph.
+        - best_score: Dictionary containing SEM results. When
+          ``finalize_with_resid_covariances`` is ``True`` this dictionary
+          includes additional keys:
+
+            - ``without_added_covariance_score``: the original score prior to
+              any residual covariance augmentation.
+            - ``resid_cov_aug``: details about the augmentation step, or ``None``
+              if no covariances were added.
     """
     ordered = None
 
@@ -897,4 +912,31 @@ def search_best_graph_climber(
     # Run hill-climbing starting from the initial graph
     best_graph = hill_climber.run(initial_graph=initial_graph, max_iter=max_iter)
     best_score = sem_score.exhaustive_results(best_graph)
+    baseline_score = best_score.copy()
+
+    if finalize_with_resid_covariances:
+        # Preserve the original score before any augmentation
+        best_score["without_added_covariance_score"] = baseline_score
+
+        model_str, _exog = general_graph_to_sem_model(best_graph)
+        from causal_pipe.sem.resid_covariance_augmentation import (
+            augment_residual_covariances_stepwise,
+        )
+
+        augmented = augment_residual_covariances_stepwise(
+            data=data,
+            model_string=model_str,
+            estimator=estimator,
+            max_add=max_add,
+            mi_cutoff=mi_cutoff,
+            sepc_cutoff=sepc_cutoff,
+            delta_stop=delta_stop,
+            whitelist_pairs=whitelist_pairs,
+            forbid_pairs=forbid_pairs,
+            same_occasion_regex=same_occasion_regex,
+            verbose=True,
+        )
+
+        best_score["resid_cov_aug"] = augmented
+
     return best_graph, best_score

@@ -452,6 +452,14 @@ search_best_graph_climber(
     node_names: Optional[List[str]] = None,
     max_iter: int = 1000,
     estimator: str = "MLM",
+    finalize_with_resid_covariances: bool = False,
+    mi_cutoff: float = 10.0,
+    sepc_cutoff: float = 0.10,
+    max_add: int = 5,
+    delta_stop: float = 0.003,
+    whitelist_pairs: Optional[pd.DataFrame] = None,
+    forbid_pairs: Optional[pd.DataFrame] = None,
+    same_occasion_regex: Optional[str] = None,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]
 ```
@@ -462,12 +470,23 @@ search_best_graph_climber(
     - `node_names` (`Optional[List[str]]`, default `None`): A list of variable names in the dataset.
     - `max_iter` (`int`, default `1000`): The maximum number of iterations for the hill-climbing search.
     - `estimator` (`str`, default `"MLM"`): The estimator to use for fitting the SEM model. Options include `"MLM"`, `"MLR"`, `"ULS"`, `"WLSMV"`.
+    - `finalize_with_resid_covariances` (`bool`, default `False`): If `True`, run a post-hoc stepwise residual covariance augmentation.
+    - `mi_cutoff` (`float`, default `10.0`): Minimum modification index threshold for considering a covariance.
+    - `sepc_cutoff` (`float`, default `0.10`): Minimum absolute `sepc.all` threshold.
+    - `max_add` (`int`, default `5`): Maximum number of covariances to add.
+    - `delta_stop` (`float`, default `0.003`): Minimum improvement required in fit indices to continue.
+    - `whitelist_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional whitelist of pairs (`lhs`, `rhs`).
+    - `forbid_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional blocklist of pairs.
+    - `same_occasion_regex` (`Optional[str]`, default `None`): Regex enforcing same-occasion pairs unless whitelisted.
     - `**kwargs`: Additional keyword arguments.
 
 - **Returns:**
     - `Tuple[GeneralGraph, Dict[str, Any]]`: A tuple containing:
         - `best_graph` (`GeneralGraph`): The graph structure with the best SEM fit.
-        - `best_score` (`Dict[str, Any]`): The SEM fitting results for the best graph.
+        - `best_score` (`Dict[str, Any]`): SEM results. When residual covariance
+          augmentation is enabled, this dictionary also includes
+          `without_added_covariance_score` (the pre-augmentation score) and
+          `resid_cov_aug` (details of the augmentation step).
 
 - **Usage Example:**
 
@@ -482,9 +501,10 @@ search_best_graph_climber(
       data=data,
       initial_graph=initial_graph,
       max_iter=500,
-      estimator="MLR"
+      estimator="MLR",
+      finalize_with_resid_covariances=True,
   )
-  
+
   print(best_graph)
   print(best_score["fit_measures"])
   ```
