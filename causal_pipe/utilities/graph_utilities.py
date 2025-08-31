@@ -5,6 +5,7 @@ from typing import List, Tuple, Dict, Any, Optional
 
 import numpy as np
 import pydot
+import warnings
 from bcsl.graph_utils import (
     get_nondirected_edge,
     get_undirected_edge,
@@ -553,10 +554,17 @@ def unify_edge_types_directed_undirected(graph: GeneralGraph) -> GeneralGraph:
             is_directed = is_directed_i_j or is_directed_j_i
             if is_directed:
                 graph.remove_edge(edge)
-                graph.add_edge(get_directed_edge(edge.node1, edge.node2))
+                if edge.endpoint1 == Endpoint.TAIL and edge.endpoint2 == Endpoint.ARROW:
+                    graph.add_edge(get_directed_edge(edge.node1, edge.node2))
+                elif edge.endpoint1 == Endpoint.ARROW and edge.endpoint2 == Endpoint.TAIL:
+                    graph.add_edge(get_directed_edge(edge.node2, edge.node1))
+                elif is_directed_i_j:
+                    graph.add_edge(get_directed_edge(node_i, node_j))
+                else:
+                    graph.add_edge(get_directed_edge(node_j, node_i))
             else:
                 graph.remove_edge(edge)
-                graph.add_edge(get_bidirected_edge(edge.node1, edge.node2))
+                graph.add_edge(get_bidirected_edge(node_i, node_j))
     return graph
 
 
@@ -716,15 +724,24 @@ def add_edge_coefficients_from_sem_fit(
             elif key in structural_dict:
                 coefficient = structural_dict[key]
             else:
-                raise ValueError(
-                    f"Edge between '{node1}' and '{node2}' not found in the model."
+                warnings.warn(
+                    f"Edge between '{node1}' and '{node2}' not found in the model; skipping."
                 )
+                continue
         elif endpoints == ("ARROW", "ARROW"):  # Bidirected residual covariance
             key = tuple(sorted([node1, node2]))
             if key in residual_dict:
                 coefficient = residual_dict[key]
+            else:
+                warnings.warn(
+                    f"Residual covariance between '{node1}' and '{node2}' not found in the model; skipping."
+                )
+                continue
         else:
-            raise ValueError(f"Invalid edge endpoints: {endpoints}")
+            warnings.warn(
+                f"Invalid edge endpoints {endpoints} for edge '{node1}'-'{node2}'; skipping."
+            )
+            continue
 
         # Assign coefficient if found
         if coefficient is not None:
@@ -745,9 +762,9 @@ def add_edge_coefficients_from_sem_fit(
                 graph.add_edge(new_edge)
                 edges_with_coefficients.append(new_edge)
         else:
-            # Edge not found in the model; raise an error
-            raise ValueError(
-                f"Edge between '{node1}' and '{node2}' with endpoints {endpoints} not found in the model."
+            # Edge not found in the model; skip with a warning
+            warnings.warn(
+                f"Edge between '{node1}' and '{node2}' with endpoints {endpoints} not found in the model; skipping."
             )
 
     return graph, edges_with_coefficients
