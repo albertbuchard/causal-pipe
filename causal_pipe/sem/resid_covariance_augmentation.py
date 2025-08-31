@@ -89,9 +89,10 @@ def augment_residual_covariances_stepwise(
     else:
         ro.globalenv["FB"] = ro.r("NULL")
 
-    ro.globalenv["same_regex"] = (
-        same_occasion_regex if same_occasion_regex else ro.r("NA_character_")
-    )
+    if isinstance(same_occasion_regex, str) and same_occasion_regex:
+        ro.globalenv["same_regex"] = same_occasion_regex
+    else:
+        ro.globalenv["same_regex"] = ro.r("NA_character_")
     ro.globalenv["verbose"] = verbose
 
     ro.r(
