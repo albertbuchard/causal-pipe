@@ -271,8 +271,10 @@ def fit_sem_lavaan(
         ]
         for m in measures:
             fit_measure = ro.r(f"fitMeasures(fit.mod, '{m}')")
-            if fit_measure:
+            if fit_measure is not None and hasattr(fit_measure, "__len__") and len(fit_measure) > 0:
                 fit_measures[m] = fit_measure[0]
+            else:
+                fit_measures[m] = fit_measure
 
         print("\nSelected Fit Measures:")
         print(fit_measures)
