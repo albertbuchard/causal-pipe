@@ -76,7 +76,14 @@ def augment_residual_covariances_stepwise(
     param_est = ro.r["parameterEstimates"]
 
     def get_fit(fit) -> Dict[str, Optional[float]]:
-        fm = lav_inspect(fit, "fit.measures")
+        # lavInspect returns an R named vector. When numpy/pandas automatic
+        # conversions are active (e.g. via pandas2ri.activate), this can be
+        # converted into a plain ``numpy.ndarray`` which lacks the ``rx2``
+        # method used below to access elements by name.  Using a local
+        # converter with the default configuration ensures we keep an R
+        # object that preserves the named structure.
+        with localconverter(ro.default_converter):
+            fm = lav_inspect(fit, "fit.measures")
         out: Dict[str, Optional[float]] = {}
         for key in [
             "cfi",
