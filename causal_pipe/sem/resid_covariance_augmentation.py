@@ -132,7 +132,7 @@ def augment_residual_covariances_stepwise(
         return True
 
     model_cur = model_string
-    fit = sem(model_cur, data=r_data, std_lv=std_lv, estimator=estimator)
+    fit = sem(model_cur, data=r_data, estimator=estimator, **{"std.lv": std_lv})
     fit_init = get_fit(fit)
     fit_hist: List[Dict[str, Optional[float]]] = [fit_init]
     added: List[Dict[str, Any]] = []
@@ -197,7 +197,7 @@ def augment_residual_covariances_stepwise(
         model_try = model_cur + "\n" + add_line
 
         try:
-            fit_new = sem(model_try, data=r_data, std_lv=std_lv, estimator=estimator)
+            fit_new = sem(model_try, data=r_data, estimator=estimator, **{"std.lv": std_lv})
         except Exception:
             break
 
