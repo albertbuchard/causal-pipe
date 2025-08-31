@@ -605,10 +605,21 @@ class CausalPipe:
                         max_iter=100,
                         estimator=method.params.get("estimator", default_estimator),
                         ordered=ordered,
+                        finalize_with_resid_covariances=method.params.get(
+                            "finalize_with_resid_covariances", False
+                        ),
+                        mi_cutoff=method.params.get("mi_cutoff", 10.0),
+                        sepc_cutoff=method.params.get("sepc_cutoff", 0.10),
+                        max_add=method.params.get("max_add", 5),
+                        delta_stop=method.params.get("delta_stop", 0.003),
+                        whitelist_pairs=method.params.get("whitelist_pairs"),
+                        forbid_pairs=method.params.get("forbid_pairs"),
+                        same_occasion_regex=method.params.get("same_occasion_regex"),
                     )
                     self.causal_effects[method.name] = {
                         "best_graph": best_graph,
                         "summary": sem_results,
+                        "resid_cov_aug": sem_results.get("resid_cov_aug"),
                     }
 
                     print("Saving results to output directory.")
