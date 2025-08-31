@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from causal_pipe.causal_discovery.static_causal_discovery import visualize_graph
+from causallearn.graph.GeneralGraph import GeneralGraph
 from causal_pipe.causal_pipe import (
     CausalPipe,
     CausalPipeConfig,
@@ -14,47 +15,6 @@ from causal_pipe.pipe_config import (
     CausalEffectMethod,
 )
 
-def create_true_causal_graph_easy_with_ordinal_and_resid_cov() -> "GeneralGraph":
-    """
-    Creates the true causal graph for the easy dataset with ordinal variables
-    and a residual covariance between Var0 and Ord3 using causal-learn's GeneralGraph.
-
-    Returns:
-    - GeneralGraph: The true causal graph.
-    """
-    from causallearn.graph.Edge import Edge
-    from causallearn.graph.Endpoint import Endpoint
-    from causallearn.graph.GeneralGraph import GeneralGraph
-    from causallearn.graph.GraphNode import GraphNode
-
-    # Define node names
-    nodes = {
-        "Var0": GraphNode("Var0"),
-        "Ord1": GraphNode("Ord1"),
-        "Ord2": GraphNode("Ord2"),
-        "Ord3": GraphNode("Ord3"),
-        "Var3": GraphNode("Var3"),
-        "Var4": GraphNode("Var4"),
-        "Var5": GraphNode("Var5"),
-        "Var6": GraphNode("Var6"),
-    }
-
-    # Create edges based on the causal relationships
-    edges = [
-        Edge(nodes["Var0"], nodes["Ord1"], Endpoint.ARROW, Endpoint.TAIL),
-        Edge(nodes["Var0"], nodes["Ord2"], Endpoint.ARROW, Endpoint.TAIL),
-        Edge(nodes["Var0"], nodes["Ord3"], Endpoint.CIRCLE, Endpoint.CIRCLE),  # Residual covariance
-        Edge(nodes["Ord1"], nodes["Var3"], Endpoint.ARROW, Endpoint.TAIL),
-        Edge(nodes["Ord2"], nodes["Var4"], Endpoint.ARROW, Endpoint.TAIL),
-        Edge(nodes["Ord3"], nodes["Var4"], Endpoint.ARROW, Endpoint.TAIL),
-        Edge(nodes["Var3"], nodes["Var5"], Endpoint.ARROW, Endpoint.TAIL),
-        Edge(nodes["Var4"], nodes["Var5"], Endpoint.ARROW, Endpoint.TAIL),
-        # Var6 is independent
-    ]
-
-    # Create the graph
-    graph = GeneralGraph(list(nodes.values()), edges)
-    return graph
 
 def simulate_data(n_samples: int = 500, seed: int = 0) -> pd.DataFrame:
     """Simulate dataset with a residual covariance between Var0 and Ord3."""
@@ -63,7 +23,7 @@ def simulate_data(n_samples: int = 500, seed: int = 0) -> pd.DataFrame:
     # Define and visualize the true causal graph
     true_graph = create_true_causal_graph_easy_with_ordinal_and_resid_cov()
     visualize_graph(
-        true_graph, title="True Causal Graph (EASY with Ordinal) and Residual Covariance", show=False
+        true_graph, title="True Causal Graph (EASY with Ordinal) and Residual Covariance", show=True
     )
 
     # Var0 and Ord3 share unmeasured influence (correlated residuals)
@@ -99,6 +59,69 @@ def simulate_data(n_samples: int = 500, seed: int = 0) -> pd.DataFrame:
     )
 
 
+def create_true_causal_graph_easy_with_ordinal_and_resid_cov() -> GeneralGraph:
+    """
+    Creates the true causal graph for the easy dataset with ordinal variables
+    and a residual covariance between Var0 and Ord3 using causal-learn's GeneralGraph.
+
+    Returns:
+    - GeneralGraph: The true causal graph.
+    """
+    from causallearn.graph.Edge import Edge
+    from causallearn.graph.Endpoint import Endpoint
+    from causallearn.graph.GeneralGraph import GeneralGraph
+    from causallearn.graph.GraphNode import GraphNode
+
+    # Define node names
+    nodes = {
+        "Var0": GraphNode("Var0"),
+        "Ord1": GraphNode("Ord1"),
+        "Ord2": GraphNode("Ord2"),
+        "Ord3": GraphNode("Ord3"),
+        "Var3": GraphNode("Var3"),
+        "Var4": GraphNode("Var4"),
+        "Var5": GraphNode("Var5"),
+        "Var6": GraphNode("Var6"),
+    }
+
+    # Create the graph
+    graph = GeneralGraph(list(nodes.values()))
+
+    # Define true directed edges
+    directed_edges = [
+        ("Var0", "Ord1"),
+        ("Var0", "Ord2"),
+        ("Ord1", "Var3"),
+        ("Ord2", "Var4"),
+        ("Ord3", "Var4"),
+        ("Var3", "Var5"),
+        ("Var4", "Var5"),
+    ]
+    for source, target in directed_edges:
+        edge = Edge(
+            nodes[source],
+            nodes[target],
+            Endpoint.TAIL,  # Tail end for the source node
+            Endpoint.ARROW,  # Arrow end for the target node
+        )
+        graph.add_edge(edge)
+
+    # Define the residual covariance (bidirected edge) between Var0 and Ord3
+    edges = [
+        Edge(
+            nodes["Var0"],
+            nodes["Ord3"],
+            Endpoint.ARROW,  # Arrow end for Var0
+            Endpoint.ARROW,  # Arrow end for Ord3
+        )
+    ]
+
+    for edge in edges:
+        graph.add_edge(edge)
+
+    return graph
+
+
 def run_pipeline_with_resid_covariance():
     data = simulate_data()
 
@@ -119,6 +142,7 @@ def run_pipeline_with_resid_covariance():
                     "finalize_with_resid_covariances": True,
                     "whitelist_pairs": pd.DataFrame({"lhs": ["Var0"], "rhs": ["Ord3"]}),
                     "max_add": 1,
+                    "max_iter": 2,
                 },
             )
         ],

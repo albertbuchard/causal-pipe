@@ -602,7 +602,7 @@ class CausalPipe:
                         df,
                         initial_graph=self.directed_graph,
                         node_names=list(df.columns),
-                        max_iter=100,
+                        max_iter=method.params.get("max_iter", 100),
                         estimator=method.params.get("estimator", default_estimator),
                         ordered=ordered,
                         finalize_with_resid_covariances=method.params.get(
