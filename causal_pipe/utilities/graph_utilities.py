@@ -722,89 +722,90 @@ def get_nodes_from_node_names(node_names: List[str]) -> List[GraphNode]:
 def add_edge_coefficients_from_sem_fit(
     graph: GeneralGraph, model_output: Dict[str, Any]
 ):
-    """Return a graph whose structure and coefficients match a SEM fit.
-
-    The best graph returned by the hill-climbing search may not perfectly
-    align with the structure that the SEM fitting procedure finally uses
-    (for example, edges can be re-oriented or pruned).  This helper
-    reconstructs the graph based solely on the fitted model and attaches
-    the estimated coefficients so that the visualised graph mirrors the
-    SEM summary.
+    """Attach SEM coefficients to graph edges using the fitted model.
 
     Parameters
     ----------
     graph : GeneralGraph
-        A graph providing the nodes of the model.
+        Graph whose edge orientations will be used.
     model_output : dict
-        Dictionary containing the keys ``structural_model``,
-        ``measurement_model`` and ``residual_covariances`` as returned by
-        :func:`fit_sem_lavaan` or the hill climber.
+        Dictionary containing ``structural_model``, ``measurement_model`` and
+        ``residual_covariances`` tables from :func:`fit_sem_lavaan` or the hill
+        climber.
     """
-
-    # Start from a simplified copy of the graph to get the nodes
+    # Normalize edge types for easier comparisons
     graph = unify_edge_types_directed_undirected(graph)
 
-    # Map node names to GraphNode objects for quick lookup
-    nodes: Dict[str, GraphNode] = {n.get_name(): n for n in graph.get_nodes()}
+    # Extract coefficient mappings with tolerance to column naming
+    def _get_coef(row: Dict[str, Any]) -> Optional[float]:
+        return (
+            row.get("Coefficient")
+            or row.get("Std.Estimate")
+            or row.get("est.std")
+        )
 
-    # Remove all existing edges; the model output dictates the structure
-    for e in list(graph.get_graph_edges()):
-        graph.remove_edge(e)
+    measurement_dict: Dict[Tuple[str, str], float] = {}
+    for mm in model_output.get("measurement_model", []) or []:
+        coef = _get_coef(mm)
+        if coef is not None:
+            measurement_dict[(mm["LV"], mm["Item"])] = coef
+
+    structural_dict: Dict[Tuple[str, str], float] = {}
+    for sm in model_output.get("structural_model", []) or []:
+        coef = _get_coef(sm)
+        if coef is not None:
+            structural_dict[(sm["Predictor"], sm["LV"])] = coef
+
+    residual_dict: Dict[Tuple[str, str], float] = {}
+    for rc in model_output.get("residual_covariances", []) or []:
+        coef = _get_coef(rc)
+        if coef is not None:
+            key = tuple(sorted([rc["Variable1"], rc["Variable2"]]))
+            residual_dict[key] = coef
 
     edges_with_coefficients: List[Edge] = []
 
-    # Helper to add an edge with a coefficient, replacing any existing edge
-    def _add_edge(n1: str, n2: str, end1: Endpoint, end2: Endpoint, coef: float):
-        node1 = nodes.get(n1)
-        node2 = nodes.get(n2)
-        if node1 is None or node2 is None:
-            warnings.warn(f"Nodes '{n1}' or '{n2}' not found in graph; skipping edge.")
-            return
-        existing = graph.get_edge(node1, node2)
-        if existing is not None:
-            graph.remove_edge(existing)
-        edge = EdgeWithCoefficient(node1, node2, end1, end2, coef)
-        graph.add_edge(edge)
-        edges_with_coefficients.append(edge)
+    for edge in list(graph.get_graph_edges()):
+        node1 = edge.get_node1().get_name()
+        node2 = edge.get_node2().get_name()
+        ep1, ep2 = edge.get_endpoint1(), edge.get_endpoint2()
 
-    # Measurement model: LV -> Item
-    for mm in model_output.get("measurement_model", []) or []:
-        coef = mm.get("Coefficient")
-        if coef is None:
-            coef = mm.get("Std.Estimate")
-        if coef is None:
-            coef = mm.get("est.std")
-        if coef is None:
+        coefficient = None
+        if ep1 == Endpoint.TAIL and ep2 == Endpoint.ARROW:
+            key = (node1, node2)
+            coefficient = measurement_dict.get(key) or structural_dict.get(key)
+        elif ep1 == Endpoint.ARROW and ep2 == Endpoint.TAIL:
+            key = (node2, node1)
+            coefficient = structural_dict.get(key) or measurement_dict.get(key)
+        elif ep1 == Endpoint.ARROW and ep2 == Endpoint.ARROW:
+            key = tuple(sorted([node1, node2]))
+            coefficient = residual_dict.get(key)
+        else:
+            warnings.warn(
+                f"Unhandled endpoints {ep1}-{ep2} for '{node1}'-'{node2}'; skipping."
+            )
             continue
-        _add_edge(mm["LV"], mm["Item"], Endpoint.TAIL, Endpoint.ARROW, coef)
 
-    # Structural model: Predictor -> LV
-    for sm in model_output.get("structural_model", []) or []:
-        coef = sm.get("Coefficient")
-        if coef is None:
-            coef = sm.get("Std.Estimate")
-        if coef is None:
-            coef = sm.get("est.std")
-        if coef is None:
+        if coefficient is None:
+            warnings.warn(
+                f"Edge between '{node1}' and '{node2}' not found in the model; skipping."
+            )
             continue
-        _add_edge(sm["Predictor"], sm["LV"], Endpoint.TAIL, Endpoint.ARROW, coef)
 
-    # Residual covariances: bidirected
-    for rc in model_output.get("residual_covariances", []) or []:
-        coef = rc.get("Coefficient")
-        if coef is None:
-            coef = rc.get("Std.Estimate")
-        if coef is None:
-            coef = rc.get("est.std")
-        if coef is None:
-            continue
-        _add_edge(
-            rc["Variable1"],
-            rc["Variable2"],
-            Endpoint.ARROW,
-            Endpoint.ARROW,
-            coef,
-        )
+        if isinstance(edge, EdgeWithCoefficient):
+            edge.coefficient = coefficient
+            edges_with_coefficients.append(edge)
+        else:
+            graph.remove_edge(edge)
+            new_edge = EdgeWithCoefficient(
+                node1=edge.node1,
+                node2=edge.node2,
+                end1=edge.endpoint1,
+                end2=edge.endpoint2,
+                coefficient=coefficient,
+            )
+            graph.add_edge(new_edge)
+            edges_with_coefficients.append(new_edge)
 
     return graph, edges_with_coefficients
 
