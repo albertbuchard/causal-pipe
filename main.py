@@ -54,7 +54,7 @@ if __name__ == "__main__":
         ],
         study_name="pipe_easy_dataset",
         output_path="./output/",
-        show_plots=True,
+        show_plots=False,
         verbose=True,
     )
     compare_easy_dataset(config)

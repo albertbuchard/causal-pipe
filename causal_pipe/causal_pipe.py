@@ -557,7 +557,7 @@ class CausalPipe:
                         ordered=ordered,
                         exogenous_vars_model_1=exogenous_vars,
                     )
-                    coef_graph, _ = add_edge_coefficients_from_sem_fit(
+                    coef_graph, edges_with_coefficients = add_edge_coefficients_from_sem_fit(
                         directed_graph,
                         model_output=self.causal_effects[method.name],
                     )
@@ -565,6 +565,7 @@ class CausalPipe:
                     os.makedirs(out_sem_dir, exist_ok=True)
                     visualize_graph(
                         coef_graph,
+                        edges=edges_with_coefficients,
                         title="SEM Result",
                         labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
@@ -634,12 +635,13 @@ class CausalPipe:
                         show=show_plot,
                         output_path=os.path.join(out_sem_dir, "best_graph.png"),
                     )
-                    coef_graph, _ = add_edge_coefficients_from_sem_fit(
+                    coef_graph, edges_with_coefficients = add_edge_coefficients_from_sem_fit(
                         best_graph,
                         model_output=self.causal_effects[method.name]["summary"],
                     )
                     visualize_graph(
                         coef_graph,
+                        edges=edges_with_coefficients,
                         title="Best Graph Climber Result With Coefficients",
                         labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
