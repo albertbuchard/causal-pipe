@@ -5,7 +5,6 @@ from typing import List, Tuple, Dict, Any, Optional
 
 import numpy as np
 import pydot
-import warnings
 from bcsl.graph_utils import (
     get_nondirected_edge,
     get_undirected_edge,
@@ -722,114 +721,79 @@ def get_nodes_from_node_names(node_names: List[str]) -> List[GraphNode]:
 def add_edge_coefficients_from_sem_fit(
     graph: GeneralGraph, model_output: Dict[str, Any]
 ):
+    """Build a coefficient-labeled graph directly from SEM fit tables.
+
+    Parameters
+    ----------
+    graph : GeneralGraph
+        Graph providing the node set; its edge structure is ignored.
+    model_output : dict
+        Dictionary containing ``structural_model``, ``measurement_model`` and
+        ``residual_covariances`` tables from :func:`fit_sem_lavaan` or the hill
+        climber.
     """
-    Validates that all edges in the graph exist in the model and adds coefficient information.
 
-    Parameters:
-    - graph: An instance of GeneralGraph.
-    - model_output: A dictionary containing the model output, including 'structural_model',
-      'residual_covariances', and 'measurement_model'.
-    """
-    # Convert graph
-    graph = unify_edge_types_directed_undirected(graph)
+    # Map existing nodes by name so we can reuse them in the new graph
+    node_lookup: Dict[str, GraphNode] = {
+        n.get_name(): n for n in graph.get_nodes()
+    }
+    coef_graph = GeneralGraph(nodes=list(node_lookup.values()))
 
-    # Parse the model output
-    measurement_model = model_output.get("measurement_model", [])
-    structural_model = model_output.get("structural_model", [])
-    residual_covariances = model_output.get("residual_covariances", [])
+    def _get_coef(row: Dict[str, Any]) -> Optional[float]:
+        return (
+            row.get("Coefficient")
+            or row.get("Std.Estimate")
+            or row.get("est.std")
+        )
 
-    # Create mappings for quick lookup
-    # Measurement: (LV, Item) -> coefficient
-    measurement_dict = {}
-    if measurement_model:
-        for mm in measurement_model:
-            lv = mm["LV"]
-            item = mm["Item"]
-            std_estimate = mm.get("Std.Estimate", None)  # Using standardized estimate
-            if std_estimate is not None:
-                measurement_dict[(lv, item)] = std_estimate
+    edges_with_coefficients: List[Edge] = []
 
-    # Structural: (Predictor, LV) -> coefficient
-    structural_dict = {}
-    if structural_model:
-        for sm in structural_model:
-            lv = sm["LV"]
-            predictor = sm["Predictor"]
-            coef = sm["Coefficient"]
-            structural_dict[(predictor, lv)] = coef
+    # Measurement model: LV -> Item
+    for mm in model_output.get("measurement_model", []) or []:
+        coef = _get_coef(mm)
+        lv = node_lookup.get(mm["LV"]) or GraphNode(mm["LV"])
+        item = node_lookup.get(mm["Item"]) or GraphNode(mm["Item"])
+        node_lookup[lv.get_name()] = lv
+        node_lookup[item.get_name()] = item
+        if lv not in coef_graph.get_nodes():
+            coef_graph.add_node(lv)
+        if item not in coef_graph.get_nodes():
+            coef_graph.add_node(item)
+        edge = EdgeWithCoefficient(lv, item, Endpoint.TAIL, Endpoint.ARROW, coef)
+        coef_graph.add_edge(edge)
+        edges_with_coefficients.append(edge)
 
-    # Residual Covariances: (Var1, Var2) -> coefficient
-    residual_dict = {}
-    if residual_covariances:
-        for rc in residual_covariances:
-            var1 = rc["Variable1"]
-            var2 = rc["Variable2"]
-            coef = rc["Coefficient"]
-            # Ensure consistent ordering
-            key = tuple(sorted([var1, var2]))
-            residual_dict[key] = coef
+    # Structural model: Predictor -> LV
+    for sm in model_output.get("structural_model", []) or []:
+        coef = _get_coef(sm)
+        pred = node_lookup.get(sm["Predictor"]) or GraphNode(sm["Predictor"])
+        lv = node_lookup.get(sm["LV"]) or GraphNode(sm["LV"])
+        node_lookup[pred.get_name()] = pred
+        node_lookup[lv.get_name()] = lv
+        if pred not in coef_graph.get_nodes():
+            coef_graph.add_node(pred)
+        if lv not in coef_graph.get_nodes():
+            coef_graph.add_node(lv)
+        edge = EdgeWithCoefficient(pred, lv, Endpoint.TAIL, Endpoint.ARROW, coef)
+        coef_graph.add_edge(edge)
+        edges_with_coefficients.append(edge)
 
-    # Now, iterate over all edges in the graph
-    edges_with_coefficients = []
-    for edge in graph.get_graph_edges():
-        node1 = edge.get_node1().get_name()
-        node2 = edge.get_node2().get_name()
-        endpoints = (str(edge.get_endpoint1()), str(edge.get_endpoint2()))
+    # Residual covariances: bidirected Item <-> Item
+    for rc in model_output.get("residual_covariances", []) or []:
+        coef = _get_coef(rc)
+        v1 = node_lookup.get(rc["Variable1"]) or GraphNode(rc["Variable1"])
+        v2 = node_lookup.get(rc["Variable2"]) or GraphNode(rc["Variable2"])
+        node_lookup[v1.get_name()] = v1
+        node_lookup[v2.get_name()] = v2
+        if v1 not in coef_graph.get_nodes():
+            coef_graph.add_node(v1)
+        if v2 not in coef_graph.get_nodes():
+            coef_graph.add_node(v2)
+        edge = EdgeWithCoefficient(v1, v2, Endpoint.ARROW, Endpoint.ARROW, coef)
+        coef_graph.add_edge(edge)
+        edges_with_coefficients.append(edge)
 
-        coefficient = None
-
-        # Check Measurement Model
-        if endpoints == ("TAIL", "ARROW"):  # LV -> Item
-            key = (node1, node2)
-            if key in measurement_dict:
-                coefficient = measurement_dict[key]
-            elif key in structural_dict:
-                coefficient = structural_dict[key]
-            else:
-                warnings.warn(
-                    f"Edge between '{node1}' and '{node2}' not found in the model; skipping."
-                )
-                continue
-        elif endpoints == ("ARROW", "ARROW"):  # Bidirected residual covariance
-            key = tuple(sorted([node1, node2]))
-            if key in residual_dict:
-                coefficient = residual_dict[key]
-            else:
-                warnings.warn(
-                    f"Residual covariance between '{node1}' and '{node2}' not found in the model; skipping."
-                )
-                continue
-        else:
-            warnings.warn(
-                f"Invalid edge endpoints {endpoints} for edge '{node1}'-'{node2}'; skipping."
-            )
-            continue
-
-        # Assign coefficient if found
-        if coefficient is not None:
-            if isinstance(edge, EdgeWithCoefficient):
-                edge.coefficient = coefficient
-                edges_with_coefficients.append(edge)
-            else:
-                # Remove edge
-                graph.remove_edge(edge)
-                # Add edge with coefficient
-                new_edge = EdgeWithCoefficient(
-                    node1=edge.node1,
-                    node2=edge.node2,
-                    end1=edge.endpoint1,
-                    end2=edge.endpoint2,
-                    coefficient=coefficient,
-                )
-                graph.add_edge(new_edge)
-                edges_with_coefficients.append(new_edge)
-        else:
-            # Edge not found in the model; skip with a warning
-            warnings.warn(
-                f"Edge between '{node1}' and '{node2}' with endpoints {endpoints} not found in the model; skipping."
-            )
-
-    return graph, edges_with_coefficients
+    return coef_graph, edges_with_coefficients
 
 
 class EdgeWithCoefficient(Edge):
