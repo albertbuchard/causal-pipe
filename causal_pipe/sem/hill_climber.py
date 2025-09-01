@@ -47,6 +47,8 @@ class GetNeighborsFunction(Protocol):
         graph: GeneralGraph,
         undirected_edges: Set[Tuple[int, int]],
         kept_edges: Set[Tuple[int, int]],
+        *,
+        respect_pag: bool,
     ) -> Tuple[List[GeneralGraph], List[Edge]]:
         """
         Generate neighboring graphs by altering the specified edges.
@@ -71,6 +73,7 @@ class GraphHillClimber:
         get_neighbors_func: GetNeighborsFunction,
         node_names: List[str],
         keep_initially_oriented_edges: bool = True,
+        respect_pag: bool = False,
     ):
         """
         Initialize the HillClimber.
@@ -79,11 +82,13 @@ class GraphHillClimber:
         :param get_neighbors_func: A function to generate neighboring graphs from the current graph.
         :param node_names: A list of node names present in the graph.
         :param keep_initially_oriented_edges: If True, initially directed edges are preserved during the search.
+        :param respect_pag: When True, the search preserves PAG marks (circles) during optimization.
         """
         self.score_function = score_function
         self.get_neighbors_func = get_neighbors_func
         self.node_names = node_names
         self.keep_initially_oriented_edges = keep_initially_oriented_edges
+        self.respect_pag = respect_pag
 
     def run(self, initial_graph: GeneralGraph, max_iter: int = 1000) -> GeneralGraph:
         """
@@ -106,8 +111,9 @@ class GraphHillClimber:
         if self.keep_initially_oriented_edges:
             kept_edges = get_all_directed_edges_list(current_graph)
 
-        # Convert all edge types to undirected for uniform processing
-        current_graph = unify_edge_types_directed_undirected(current_graph)
+        if not self.respect_pag:
+            # Convert all edge types to undirected for uniform processing
+            current_graph = unify_edge_types_directed_undirected(current_graph)
 
         # Evaluate the score of the initial graph
         current_score_fn_output = self.score_function(current_graph)
@@ -119,6 +125,7 @@ class GraphHillClimber:
 
         # Initialize iteration counter
         iteration = 0
+        print(f"[SEM-Climb] respect_pag={self.respect_pag}")
         print(f"Hill Climbing started with a maximum of {max_iter} iterations.")
         print(f"Initial score = {current_score}")
 
@@ -137,6 +144,7 @@ class GraphHillClimber:
                 current_graph,
                 undirected_edges=undirected_edges,
                 kept_edges=set(kept_edges) if kept_edges else set(),
+                respect_pag=self.respect_pag,
             )
 
             # Initialize variables to track the best neighbor in this iteration
@@ -270,7 +278,10 @@ class GraphHillClimber:
                     f"Max iteration reached without convergence. Best score = {current_score}"
                 )
 
-        # Finalize the graph by ensuring all edge types are unified as undirected
-        optimized_graph = unify_edge_types_directed_undirected(current_graph)
+        optimized_graph = (
+            current_graph
+            if self.respect_pag
+            else unify_edge_types_directed_undirected(current_graph)
+        )
 
         return optimized_graph

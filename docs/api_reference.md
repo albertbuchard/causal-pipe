@@ -460,6 +460,8 @@ search_best_graph_climber(
     whitelist_pairs: Optional[pd.DataFrame] = None,
     forbid_pairs: Optional[pd.DataFrame] = None,
     same_occasion_regex: Optional[str] = None,
+    *,
+    respect_pag: bool = False,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]
 ```
@@ -478,6 +480,7 @@ search_best_graph_climber(
     - `whitelist_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional whitelist of pairs (`lhs`, `rhs`).
     - `forbid_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional blocklist of pairs.
     - `same_occasion_regex` (`Optional[str]`, default `None`): Regex enforcing same-occasion pairs unless whitelisted.
+    - `respect_pag` (`bool`, default `False`): When `True`, the search preserves PAG marks (no change to ↔, →, —; only resolves circle endpoints consistent with PAG semantics).
     - `**kwargs`: Additional keyword arguments.
 
 - **Returns:**
