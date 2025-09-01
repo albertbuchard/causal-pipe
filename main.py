@@ -46,7 +46,7 @@ if __name__ == "__main__":
             # CausalEffectMethod(name="spearman", directed=True),
             # SEM Climbing, only ML based estimators are supported
             CausalEffectMethod(
-                name="sem-climbing", directed=True, params={"estimator": "ML"}
+                name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True}
             ),
             # CausalEffectMethod(
             #     name="sem-climbing", directed=True, params={"estimator": "MLR"}

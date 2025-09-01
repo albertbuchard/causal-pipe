@@ -599,7 +599,7 @@ class CausalPipe:
                             "Ordered variables detected but not supported by SEM Climber. Using MLR estimator instead."
                         )
                     est = method.params.get("estimator", default_estimator)
-                    respect_pag = bool(method.params.get("respect_pag", False))
+                    respect_pag = bool(method.params.get("respect_pag", True))
                     best_graph, sem_results = search_best_graph_climber(
                         df,
                         initial_graph=self.directed_graph,
