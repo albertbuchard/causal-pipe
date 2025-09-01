@@ -598,12 +598,14 @@ class CausalPipe:
                         warnings.warn(
                             "Ordered variables detected but not supported by SEM Climber. Using MLR estimator instead."
                         )
+                    est = method.params.get("estimator", default_estimator)
+                    respect_pag = bool(method.params.get("respect_pag", False))
                     best_graph, sem_results = search_best_graph_climber(
                         df,
                         initial_graph=self.directed_graph,
                         node_names=list(df.columns),
                         max_iter=method.params.get("max_iter", 100),
-                        estimator=method.params.get("estimator", default_estimator),
+                        estimator=est,
                         ordered=ordered,
                         finalize_with_resid_covariances=method.params.get(
                             "finalize_with_resid_covariances", False
@@ -615,6 +617,7 @@ class CausalPipe:
                         whitelist_pairs=method.params.get("whitelist_pairs"),
                         forbid_pairs=method.params.get("forbid_pairs"),
                         same_occasion_regex=method.params.get("same_occasion_regex"),
+                        respect_pag=respect_pag,
                     )
                     self.causal_effects[method.name] = {
                         "best_graph": best_graph,

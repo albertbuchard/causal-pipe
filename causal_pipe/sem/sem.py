@@ -863,6 +863,8 @@ def search_best_graph_climber(
     whitelist_pairs: Optional[pd.DataFrame] = None,
     forbid_pairs: Optional[pd.DataFrame] = None,
     same_occasion_regex: Optional[str] = None,
+    *,
+    respect_pag: bool = False,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
     """
@@ -880,6 +882,8 @@ def search_best_graph_climber(
         The maximum number of iterations for the hill-climbing search.
     estimator : str, optional
         The estimator to use for fitting the SEM model. Default is "MLM", others include "MLR", "ULS", "WLSMV".
+    respect_pag : bool, optional
+        When True, the search preserves PAG marks (no change to ↔, →, —; only resolves circle endpoints consistent with PAG semantics).
 
 
     Returns
@@ -909,6 +913,8 @@ def search_best_graph_climber(
         score_function=sem_score,
         get_neighbors_func=get_neighbors_general_graph,
         node_names=node_names,
+        keep_initially_oriented_edges=True,
+        respect_pag=respect_pag,
     )
 
     # Run hill-climbing starting from the initial graph
