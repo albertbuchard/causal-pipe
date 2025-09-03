@@ -21,7 +21,11 @@ from causal_pipe.partial_correlations.partial_correlations import (
     compute_partial_correlations,
 )
 from causal_pipe.preprocess.utilities import ensure_data_types
-from causal_pipe.sem.sem import fit_sem_lavaan, search_best_graph_climber
+from causal_pipe.sem.sem import (
+    fit_sem_lavaan,
+    search_best_graph_climber,
+    bootstrap_fci_edge_stability,
+)
 from causal_pipe.utilities.graph_utilities import (
     copy_graph,
     unify_edge_types_directed_undirected,
@@ -431,6 +435,20 @@ class CausalPipe:
                     output_path=os.path.join(self.output_path, "FCI_Result.png"),
                 )
                 self.directed_graph = graph_fci
+
+                if self.skeleton_method.fci_bootstrap_resamples > 0:
+                    fci_kwargs = dict(
+                        alpha=self.orientation_method.alpha,
+                        knowledge=self.orientation_method.background_knowledge,
+                        max_path_length=self.orientation_method.max_path_length,
+                        independence_test_method=self.orientation_method.conditional_independence_method,
+                    )
+                    self.fci_edge_orientation_probabilities = bootstrap_fci_edge_stability(
+                        df,
+                        resamples=self.skeleton_method.fci_bootstrap_resamples,
+                        random_state=self.skeleton_method.fci_bootstrap_random_state,
+                        fci_kwargs=fci_kwargs,
+                    )
             elif isinstance(self.orientation_method, HillClimbingOrientationMethod):
                 bcsl = BCSL(
                     data=df,
@@ -616,6 +634,8 @@ class CausalPipe:
                         forbid_pairs=method.params.get("forbid_pairs"),
                         same_occasion_regex=method.params.get("same_occasion_regex"),
                         respect_pag=respect_pag,
+                        hc_bootstrap_resamples=method.hc_bootstrap_resamples,
+                        hc_bootstrap_random_state=method.hc_bootstrap_random_state,
                     )
                     self.causal_effects[method.name] = {
                         "best_graph": best_graph,

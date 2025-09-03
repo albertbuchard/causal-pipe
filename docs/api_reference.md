@@ -196,9 +196,12 @@ Retrieves the names of ordinal and nominal variables.
         - `"mv_fisherz"`
     - `alpha` (`float`, default `0.05`): Significance level for tests. Must be between `0.0` and `1.0`.
     - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters.
+    - `fci_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run FCI on that many bootstrap samples to estimate edge orientation stability.
+    - `fci_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the FCI bootstrap resampling procedure.
 
 - **Validations:**
     - `alpha` must be between `0.0` and `1.0`.
+    - `fci_bootstrap_resamples` must be non-negative.
 
 ---
 
@@ -322,6 +325,8 @@ Retrieves the names of ordinal and nominal variables.
         - `'sem-climbing'`: Structural Equation Modeling with Hill Climbing search of the best graph.
     - `directed` (`bool`, default `True`): Indicates if the method uses a directed graph.
     - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters for the method.
+    - `hc_bootstrap_resamples` (`int`, default `0`): Number of bootstrap resamples for SEM hill climbing to estimate edge orientation stability.
+    - `hc_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the SEM hill-climb bootstrap procedure.
 
 ---
 
@@ -462,6 +467,8 @@ search_best_graph_climber(
     same_occasion_regex: Optional[str] = None,
     *,
     respect_pag: bool = False,
+    hc_bootstrap_resamples: int = 0,
+    hc_bootstrap_random_state: Optional[int] = None,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]
 ```
@@ -481,15 +488,14 @@ search_best_graph_climber(
     - `forbid_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional blocklist of pairs.
     - `same_occasion_regex` (`Optional[str]`, default `None`): Regex enforcing same-occasion pairs unless whitelisted.
     - `respect_pag` (`bool`, default `False`): When `True`, the search preserves PAG marks (no change to ↔, →, —; only resolves circle endpoints consistent with PAG semantics).
+    - `hc_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run the SEM hill climber on bootstrap resamples to estimate orientation probabilities after hill climbing.
+    - `hc_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the hill-climb bootstrap resampling procedure.
     - `**kwargs`: Additional keyword arguments.
 
 - **Returns:**
     - `Tuple[GeneralGraph, Dict[str, Any]]`: A tuple containing:
         - `best_graph` (`GeneralGraph`): The graph structure with the best SEM fit.
-        - `best_score` (`Dict[str, Any]`): SEM results. When residual covariance
-          augmentation is enabled, this dictionary also includes
-          `without_added_covariance_score` (the pre-augmentation score) and
-          `resid_cov_aug` (details of the augmentation step).
+        - `best_score` (`Dict[str, Any]`): SEM results. When residual covariance augmentation is enabled, this dictionary also includes `without_added_covariance_score` (the pre-augmentation score) and `resid_cov_aug` (details of the augmentation step). If hill-climb bootstrapping is requested, `hc_edge_orientation_probabilities` contains orientation probabilities after hill climbing.
 
 - **Usage Example:**
 
