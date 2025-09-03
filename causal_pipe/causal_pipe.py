@@ -448,6 +448,9 @@ class CausalPipe:
                         resamples=self.skeleton_method.fci_bootstrap_resamples,
                         random_state=self.skeleton_method.fci_bootstrap_random_state,
                         fci_kwargs=fci_kwargs,
+                        output_dir=os.path.join(
+                            self.output_path, "fci_bootstrap"
+                        ),
                     )
             elif isinstance(self.orientation_method, HillClimbingOrientationMethod):
                 bcsl = BCSL(
@@ -636,6 +639,9 @@ class CausalPipe:
                         respect_pag=respect_pag,
                         hc_bootstrap_resamples=method.hc_bootstrap_resamples,
                         hc_bootstrap_random_state=method.hc_bootstrap_random_state,
+                        hc_bootstrap_output_dir=os.path.join(
+                            self.output_path, "sem_hc_bootstrap"
+                        ),
                     )
                     self.causal_effects[method.name] = {
                         "best_graph": best_graph,

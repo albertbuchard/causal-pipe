@@ -2,11 +2,13 @@ import warnings
 from typing import List, Optional, Tuple, Dict, Any
 
 import copy
+import os
 import numpy as np
 import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.search.ConstraintBased.FCI import fci
 
+from causal_pipe.causal_discovery.static_causal_discovery import visualize_graph
 from causal_pipe.sem.hill_climber import GraphHillClimber
 from causal_pipe.utilities.graph_utilities import (
     dataframe_to_json_compatible_list,
@@ -883,6 +885,7 @@ def bootstrap_fci_edge_stability(
     *,
     random_state: Optional[int] = None,
     fci_kwargs: Optional[Dict[str, Any]] = None,
+    output_dir: Optional[str] = None,
 ) -> Dict[Tuple[str, str], Dict[str, float]]:
     """Estimate edge orientation probabilities via bootstrapped FCI runs.
 
@@ -897,6 +900,9 @@ def bootstrap_fci_edge_stability(
         Seed for the random number generator to ensure reproducibility.
     fci_kwargs : Optional[Dict[str, Any]], default ``None``
         Additional keyword arguments passed directly to :func:`fci`.
+    output_dir : Optional[str], default ``None``
+        Directory to save the three most common bootstrapped graphs. When
+        ``None`` no graphs are saved.
 
     Returns
     -------
@@ -914,12 +920,14 @@ def bootstrap_fci_edge_stability(
     n = data.shape[0]
     rng = np.random.RandomState(random_state)
     counts: Dict[Tuple[str, str], Dict[str, int]] = {}
+    graph_counts: Dict[Tuple[Tuple[str, str, str, str], ...], Tuple[int, GeneralGraph]] = {}
     fci_kwargs = fci_kwargs or {}
 
     for i in range(resamples):
         sample = data.sample(n=n, replace=True, random_state=rng.randint(0, 2**32))
         g, _ = fci(sample.values, node_names=list(sample.columns), **fci_kwargs)
 
+        edges_repr = []
         for edge in g.get_graph_edges():
             n1 = edge.get_node1().get_name()
             n2 = edge.get_node2().get_name()
@@ -928,11 +936,20 @@ def bootstrap_fci_edge_stability(
             if n1 <= n2:
                 pair = (n1, n2)
                 orient = f"{e1.name}-{e2.name}"
+                edge_repr = (n1, n2, e1.name, e2.name)
             else:
                 pair = (n2, n1)
                 orient = f"{e2.name}-{e1.name}"
+                edge_repr = (n2, n1, e2.name, e1.name)
+            edges_repr.append(edge_repr)
             orient_counts = counts.setdefault(pair, {})
             orient_counts[orient] = orient_counts.get(orient, 0) + 1
+
+        key = tuple(sorted(edges_repr))
+        if key in graph_counts:
+            graph_counts[key] = (graph_counts[key][0] + 1, graph_counts[key][1])
+        else:
+            graph_counts[key] = (1, copy.deepcopy(g))
 
     probs = {
         edge: {o: c / resamples for o, c in orient_counts.items()}
@@ -945,6 +962,17 @@ def bootstrap_fci_edge_stability(
             for orient, p in orient_probs.items():
                 edge_str = _format_oriented_edge(a, b, orient)
                 print(f"  {edge_str}: {p:.2f}")
+
+    if output_dir and graph_counts:
+        os.makedirs(output_dir, exist_ok=True)
+        top_graphs = sorted(
+            graph_counts.items(), key=lambda x: x[1][0], reverse=True
+        )[:3]
+        for idx, (_, (count, graph_obj)) in enumerate(top_graphs, start=1):
+            prob = count / resamples
+            title = f"Bootstrap Graph {idx} (p={prob:.2f})"
+            out_path = os.path.join(output_dir, f"graph_{idx}.png")
+            visualize_graph(graph_obj, title=title, show=False, output_path=out_path)
 
     return probs
 
@@ -967,6 +995,7 @@ def search_best_graph_climber(
     respect_pag: bool = False,
     hc_bootstrap_resamples: int = 0,
     hc_bootstrap_random_state: Optional[int] = None,
+    hc_bootstrap_output_dir: Optional[str] = None,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
     """
@@ -993,6 +1022,9 @@ def search_best_graph_climber(
         edge orientation probabilities after hill climbing.
     hc_bootstrap_random_state : Optional[int], optional
         Seed for the hill-climb bootstrap resampling procedure.
+    hc_bootstrap_output_dir : Optional[str], optional
+        Directory to save the three most common bootstrapped graphs. When
+        ``None`` no graphs are saved.
 
 
     Returns
@@ -1040,6 +1072,7 @@ def search_best_graph_climber(
         n = data.shape[0]
         rng = np.random.RandomState(hc_bootstrap_random_state)
         counts: Dict[Tuple[str, str], Dict[str, int]] = {}
+        graph_counts: Dict[Tuple[Tuple[str, str, str, str], ...], Tuple[int, GeneralGraph]] = {}
         for i in range(hc_bootstrap_resamples):
             sample = data.sample(n=n, replace=True, random_state=rng.randint(0, 2**32))
             sem_score_i = SEMScore(
@@ -1059,6 +1092,7 @@ def search_best_graph_climber(
             result_graph = hill_climber_i.run(
                 initial_graph=graph_copy, max_iter=max_iter
             )
+            edges_repr = []
             for edge in result_graph.get_graph_edges():
                 n1 = edge.get_node1().get_name()
                 n2 = edge.get_node2().get_name()
@@ -1067,11 +1101,19 @@ def search_best_graph_climber(
                 if n1 <= n2:
                     pair = (n1, n2)
                     orient = f"{e1.name}-{e2.name}"
+                    edge_repr = (n1, n2, e1.name, e2.name)
                 else:
                     pair = (n2, n1)
                     orient = f"{e2.name}-{e1.name}"
+                    edge_repr = (n2, n1, e2.name, e1.name)
+                edges_repr.append(edge_repr)
                 orient_counts = counts.setdefault(pair, {})
                 orient_counts[orient] = orient_counts.get(orient, 0) + 1
+            key = tuple(sorted(edges_repr))
+            if key in graph_counts:
+                graph_counts[key] = (graph_counts[key][0] + 1, graph_counts[key][1])
+            else:
+                graph_counts[key] = (1, copy.deepcopy(result_graph))
 
         hc_edge_orientation_probabilities = {
             edge: {o: c / hc_bootstrap_resamples for o, c in orient_counts.items()}
@@ -1083,6 +1125,18 @@ def search_best_graph_climber(
                 for orient, p in orient_probs.items():
                     edge_str = _format_oriented_edge(a, b, orient)
                     print(f"  {edge_str}: {p:.2f}")
+        if hc_bootstrap_output_dir and graph_counts:
+            os.makedirs(hc_bootstrap_output_dir, exist_ok=True)
+            top_graphs = sorted(
+                graph_counts.items(), key=lambda x: x[1][0], reverse=True
+            )[:3]
+            for idx, (_, (count, graph_obj)) in enumerate(top_graphs, start=1):
+                prob = count / hc_bootstrap_resamples
+                title = f"HC Bootstrap Graph {idx} (p={prob:.2f})"
+                out_path = os.path.join(
+                    hc_bootstrap_output_dir, f"graph_{idx}.png"
+                )
+                visualize_graph(graph_obj, title=title, show=False, output_path=out_path)
 
     if hc_edge_orientation_probabilities:
         best_score["hc_edge_orientation_probabilities"] = (
