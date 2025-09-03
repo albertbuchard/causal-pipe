@@ -141,12 +141,21 @@ class SkeletonMethod(BaseModel):
     )
     alpha: float = 0.05
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    fci_bootstrap_resamples: int = 0
+    fci_bootstrap_random_state: Optional[int] = None
 
     @field_validator("alpha")
     @classmethod
     def check_alpha(cls, v):
         if not (0.0 < v < 1.0):
             raise ValueError("alpha must be between 0.0 and 1.0")
+        return v
+
+    @field_validator("fci_bootstrap_resamples")
+    @classmethod
+    def check_fci_bootstrap_resamples(cls, v):
+        if v < 0:
+            raise ValueError("fci_bootstrap_resamples must be non-negative")
         return v
 
     class Config:
@@ -284,6 +293,15 @@ class CausalEffectMethod(BaseModel):
     name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
     directed: bool = True
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    hc_bootstrap_resamples: int = 0
+    hc_bootstrap_random_state: Optional[int] = None
+
+    @field_validator("hc_bootstrap_resamples")
+    @classmethod
+    def check_hc_bootstrap_resamples(cls, v):
+        if v < 0:
+            raise ValueError("hc_bootstrap_resamples must be non-negative")
+        return v
 
 
 class CausalPipeConfig(BaseModel):
