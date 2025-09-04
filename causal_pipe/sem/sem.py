@@ -901,8 +901,9 @@ def bootstrap_fci_edge_stability(
     fci_kwargs : Optional[Dict[str, Any]], default ``None``
         Additional keyword arguments passed directly to :func:`fci`.
     output_dir : Optional[str], default ``None``
-        Directory to save the three most common bootstrapped graphs. When
-        ``None`` no graphs are saved.
+        Directory to save the three bootstrapped graphs with the highest
+        product of edge orientation probabilities. When ``None`` no graphs
+        are saved.
 
     Returns
     -------
@@ -965,11 +966,16 @@ def bootstrap_fci_edge_stability(
 
     if output_dir and graph_counts:
         os.makedirs(output_dir, exist_ok=True)
-        top_graphs = sorted(
-            graph_counts.items(), key=lambda x: x[1][0], reverse=True
-        )[:3]
-        for idx, (_, (count, graph_obj)) in enumerate(top_graphs, start=1):
-            prob = count / resamples
+        graph_probs: List[Tuple[float, GeneralGraph]] = []
+        for edges_repr, (_, graph_obj) in graph_counts.items():
+            prob = 1.0
+            for n1, n2, e1, e2 in edges_repr:
+                edge_probs = probs.get((n1, n2), {})
+                prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
+            graph_probs.append((prob, graph_obj))
+
+        top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
+        for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
             title = f"Bootstrap Graph {idx} (p={prob:.2f})"
             out_path = os.path.join(output_dir, f"graph_{idx}.png")
             visualize_graph(graph_obj, title=title, show=False, output_path=out_path)
@@ -1023,8 +1029,9 @@ def search_best_graph_climber(
     hc_bootstrap_random_state : Optional[int], optional
         Seed for the hill-climb bootstrap resampling procedure.
     hc_bootstrap_output_dir : Optional[str], optional
-        Directory to save the three most common bootstrapped graphs. When
-        ``None`` no graphs are saved.
+        Directory to save the three bootstrapped graphs with the highest
+        product of edge orientation probabilities. When ``None`` no graphs are
+        saved.
 
 
     Returns
@@ -1127,11 +1134,16 @@ def search_best_graph_climber(
                     print(f"  {edge_str}: {p:.2f}")
         if hc_bootstrap_output_dir and graph_counts:
             os.makedirs(hc_bootstrap_output_dir, exist_ok=True)
-            top_graphs = sorted(
-                graph_counts.items(), key=lambda x: x[1][0], reverse=True
-            )[:3]
-            for idx, (_, (count, graph_obj)) in enumerate(top_graphs, start=1):
-                prob = count / hc_bootstrap_resamples
+            graph_probs: List[Tuple[float, GeneralGraph]] = []
+            for edges_repr, (_, graph_obj) in graph_counts.items():
+                prob = 1.0
+                for n1, n2, e1, e2 in edges_repr:
+                    edge_probs = hc_edge_orientation_probabilities.get((n1, n2), {})
+                    prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
+                graph_probs.append((prob, graph_obj))
+
+            top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
+            for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
                 title = f"HC Bootstrap Graph {idx} (p={prob:.2f})"
                 out_path = os.path.join(
                     hc_bootstrap_output_dir, f"graph_{idx}.png"
