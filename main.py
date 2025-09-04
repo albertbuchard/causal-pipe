@@ -46,7 +46,9 @@ if __name__ == "__main__":
             # CausalEffectMethod(name="spearman", directed=True),
             # SEM Climbing, only ML based estimators are supported
             CausalEffectMethod(
-                name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True}
+                name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True,
+                                                            "hc_bootstrap_resamples": 2, "hc_bootstrap_random_state": 42}
+
             ),
             # CausalEffectMethod(
             #     name="sem-climbing", directed=True, params={"estimator": "MLR"}
@@ -57,6 +59,6 @@ if __name__ == "__main__":
         show_plots=False,
         verbose=True,
     )
-    compare_easy_dataset(config)
+    # compare_easy_dataset(config)
     compare_easy_dataset_with_ordinal(config)
     compare_hard_dataset(config)

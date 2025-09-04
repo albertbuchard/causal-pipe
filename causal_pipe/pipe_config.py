@@ -294,15 +294,6 @@ class CausalEffectMethod(BaseModel):
     name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
     directed: bool = True
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    hc_bootstrap_resamples: int = 0
-    hc_bootstrap_random_state: Optional[int] = None
-
-    @field_validator("hc_bootstrap_resamples")
-    @classmethod
-    def check_hc_bootstrap_resamples(cls, v):
-        if v < 0:
-            raise ValueError("hc_bootstrap_resamples must be non-negative")
-        return v
 
 
 class CausalPipeConfig(BaseModel):
