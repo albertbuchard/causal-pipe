@@ -797,12 +797,81 @@ def add_edge_coefficients_from_sem_fit(
 
 
 class EdgeWithCoefficient(Edge):
-    def __init__(self, node1, node2, end1, end2, coefficient=None):
+    def __init__(
+        self,
+        node1,
+        node2,
+        end1,
+        end2,
+        coefficient: Optional[float] = None,
+        probability: Optional[float] = None,
+    ):
         super().__init__(node1, node2, end1, end2)
         self.coefficient = coefficient
+        self.probability = probability
 
     def __str__(self):
-        return f"{super().__str__()} (Coefficient: {self.coefficient})"
+        return (
+            f"{super().__str__()} (Coefficient: {self.coefficient}, "
+            f"Probability: {self.probability})"
+        )
+
+
+def _attach_edge_probabilities(
+    edges: List[EdgeWithCoefficient],
+    edge_probabilities: Dict[Tuple[str, str], Dict[str, float]],
+) -> None:
+    """Annotate edges with orientation probabilities."""
+
+    for edge in edges:
+        n1 = edge.get_node1().get_name()
+        n2 = edge.get_node2().get_name()
+        e1 = edge.endpoint1.name
+        e2 = edge.endpoint2.name
+        if n1 <= n2:
+            pair = (n1, n2)
+            orient = f"{e1}-{e2}"
+        else:
+            pair = (n2, n1)
+            orient = f"{e2}-{e1}"
+        edge.probability = edge_probabilities.get(pair, {}).get(orient)
+
+
+def add_edge_coefficients_and_probabilities_from_sem_fit(
+    graph: GeneralGraph,
+    model_output: Dict[str, Any],
+    edge_probabilities: Dict[Tuple[str, str], Dict[str, float]],
+):
+    """Create a graph annotated with SEM coefficients and edge probabilities."""
+
+    coef_graph, edges_with_coefficients = add_edge_coefficients_from_sem_fit(
+        graph, model_output
+    )
+    _attach_edge_probabilities(edges_with_coefficients, edge_probabilities)
+    return coef_graph, edges_with_coefficients
+
+
+def add_edge_probabilities_to_graph(
+    graph: GeneralGraph, edge_probabilities: Dict[Tuple[str, str], Dict[str, float]]
+):
+    """Create a graph annotated only with edge probabilities."""
+
+    node_lookup: Dict[str, GraphNode] = {
+        n.get_name(): n for n in graph.get_nodes()
+    }
+    prob_graph = GeneralGraph(nodes=list(node_lookup.values()))
+    edges_with_probabilities: List[EdgeWithCoefficient] = []
+    for edge in graph.get_graph_edges():
+        n1 = node_lookup[edge.get_node1().get_name()]
+        n2 = node_lookup[edge.get_node2().get_name()]
+        new_edge = EdgeWithCoefficient(
+            n1, n2, edge.endpoint1, edge.endpoint2, coefficient=None
+        )
+        prob_graph.add_edge(new_edge)
+        edges_with_probabilities.append(new_edge)
+
+    _attach_edge_probabilities(edges_with_probabilities, edge_probabilities)
+    return prob_graph, edges_with_probabilities
 
 
 # Define refined colors
@@ -896,17 +965,26 @@ def graph_with_coefficient_to_pydot(
         label = ""
         color = "black"  # Default color
 
-        # Check if the edge has a coefficient and assign label and color accordingly
-        if isinstance(edge, EdgeWithCoefficient) and edge.coefficient is not None:
+        if isinstance(edge, EdgeWithCoefficient):
+            parts: List[str] = []
             coefficient = edge.coefficient
-            label = f"{coefficient:.3f}"
-            if coefficient > 0:
-                color = POSITIVE_COLOR
-            elif coefficient < 0:
-                color = NEGATIVE_COLOR
-            # If coefficient is zero, retain default color
-            dot_edge.set_label(label)
-            dot_edge.set_color(color)
+            probability = getattr(edge, "probability", None)
+            if coefficient is not None:
+                parts.append(f"{coefficient:.3f}")
+                if coefficient > 0:
+                    color = POSITIVE_COLOR
+                elif coefficient < 0:
+                    color = NEGATIVE_COLOR
+            if probability is not None:
+                prob_pct = probability * 100
+                if parts:
+                    parts[-1] = f"{parts[-1]} (p_b={prob_pct:.0f}%)"
+                else:
+                    parts.append(f"p_b={prob_pct:.0f}%")
+            if parts:
+                label = " ".join(parts)
+                dot_edge.set_label(label)
+                dot_edge.set_color(color)
 
         # Optional: Handle other edge properties (e.g., penwidth, style)
         # Example:

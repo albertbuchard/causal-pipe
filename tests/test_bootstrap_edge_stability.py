@@ -26,11 +26,14 @@ def test_bootstrap_fci_edge_stability_returns_probabilities():
     c = b + np.random.randn(n) * 0.1
     data = pd.DataFrame({"A": a, "B": b, "C": c})
 
-    probs = bootstrap_fci_edge_stability(data, resamples=2, random_state=1)
+    probs, best_graph = bootstrap_fci_edge_stability(
+        data, resamples=2, random_state=1
+    )
     assert isinstance(probs, dict)
     assert all(isinstance(v, dict) for v in probs.values())
     for orient_probs in probs.values():
         assert all(0.0 <= p <= 1.0 for p in orient_probs.values())
+    assert best_graph is None or isinstance(best_graph, tuple)
 
 
 def test_hill_climb_bootstrap_returns_probabilities(monkeypatch):
@@ -63,6 +66,8 @@ def test_hill_climb_bootstrap_returns_probabilities(monkeypatch):
     assert isinstance(hc_probs, dict)
     for orient_probs in hc_probs.values():
         assert all(0.0 <= p <= 1.0 for p in orient_probs.values())
+    assert "best_graph_with_hc_bootstrap" in best_score
+    assert isinstance(best_score["best_graph_with_hc_bootstrap"], tuple)
 
 
 def test_fci_bootstrap_saves_graph_with_highest_edge_probability_product(monkeypatch, tmp_path):

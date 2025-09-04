@@ -886,7 +886,7 @@ def bootstrap_fci_edge_stability(
     random_state: Optional[int] = None,
     fci_kwargs: Optional[Dict[str, Any]] = None,
     output_dir: Optional[str] = None,
-) -> Dict[Tuple[str, str], Dict[str, float]]:
+) -> Tuple[Dict[Tuple[str, str], Dict[str, float]], Optional[Tuple[float, GeneralGraph, Dict[Tuple[str, str], Dict[str, float]]]]]:
     """Estimate edge orientation probabilities via bootstrapped FCI runs.
 
     Parameters
@@ -907,16 +907,19 @@ def bootstrap_fci_edge_stability(
 
     Returns
     -------
-    Dict[Tuple[str, str], Dict[str, float]]
-        Mapping from unordered node pairs to orientation probabilities across
-        bootstrap runs. Orientation keys are strings of the form
-        ``"{endpoint1}-{endpoint2}"`` where ``endpoint1`` and ``endpoint2`` are
-        :class:`~causallearn.graph.Endpoint` names (e.g., ``"TAIL-ARROW"`` for
-        a directed edge from the first node to the second).
+    Tuple[Dict[Tuple[str, str], Dict[str, float]], Optional[Tuple[float, GeneralGraph, Dict[Tuple[str, str], Dict[str, float]]]]]
+        - Mapping from unordered node pairs to orientation probabilities across
+          bootstrap runs. Orientation keys are strings of the form
+          ``"{endpoint1}-{endpoint2}"`` where ``endpoint1`` and ``endpoint2``
+          are :class:`~causallearn.graph.Endpoint` names (e.g., ``"TAIL-ARROW"``
+          for a directed edge from the first node to the second).
+        - Information about the most probable bootstrapped graph as a tuple
+          ``(probability, graph, edge_probabilities)`` or ``None`` if no graphs
+          were generated.
     """
 
     if resamples <= 0:
-        return {}
+        return {}, None
 
     n = data.shape[0]
     rng = np.random.RandomState(random_state)
@@ -964,9 +967,9 @@ def bootstrap_fci_edge_stability(
                 edge_str = _format_oriented_edge(a, b, orient)
                 print(f"  {edge_str}: {p:.2f}")
 
-    if output_dir and graph_counts:
-        os.makedirs(output_dir, exist_ok=True)
-        graph_probs: List[Tuple[float, GeneralGraph]] = []
+    best_graph_with_bootstrap = None
+    graph_probs: List[Tuple[float, GeneralGraph]] = []
+    if graph_counts:
         for edges_repr, (_, graph_obj) in graph_counts.items():
             prob = 1.0
             for n1, n2, e1, e2 in edges_repr:
@@ -974,13 +977,25 @@ def bootstrap_fci_edge_stability(
                 prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
             graph_probs.append((prob, graph_obj))
 
-        top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
-        for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
-            title = f"Bootstrap Graph {idx} (p={prob:.2f})"
-            out_path = os.path.join(output_dir, f"graph_{idx}.png")
-            visualize_graph(graph_obj, title=title, show=False, output_path=out_path)
+        if graph_probs:
+            best_prob, best_graph = max(graph_probs, key=lambda x: x[0])
+            best_graph_with_bootstrap = (
+                best_prob,
+                copy.deepcopy(best_graph),
+                probs,
+            )
 
-    return probs
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
+            for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
+                title = f"Bootstrap Graph {idx} (p={prob:.2f})"
+                out_path = os.path.join(output_dir, f"graph_{idx}.png")
+                visualize_graph(
+                    graph_obj, title=title, show=False, output_path=out_path
+                )
+
+    return probs, best_graph_with_bootstrap
 
 
 def search_best_graph_climber(
@@ -1132,9 +1147,8 @@ def search_best_graph_climber(
                 for orient, p in orient_probs.items():
                     edge_str = _format_oriented_edge(a, b, orient)
                     print(f"  {edge_str}: {p:.2f}")
-        if hc_bootstrap_output_dir and graph_counts:
-            os.makedirs(hc_bootstrap_output_dir, exist_ok=True)
-            graph_probs: List[Tuple[float, GeneralGraph]] = []
+        graph_probs: List[Tuple[float, GeneralGraph]] = []
+        if graph_counts:
             for edges_repr, (_, graph_obj) in graph_counts.items():
                 prob = 1.0
                 for n1, n2, e1, e2 in edges_repr:
@@ -1142,13 +1156,27 @@ def search_best_graph_climber(
                     prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
                 graph_probs.append((prob, graph_obj))
 
-            top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
-            for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
-                title = f"HC Bootstrap Graph {idx} (p={prob:.2f})"
-                out_path = os.path.join(
-                    hc_bootstrap_output_dir, f"graph_{idx}.png"
+            if graph_probs:
+                best_prob, best_graph_bootstrap = max(
+                    graph_probs, key=lambda x: x[0]
                 )
-                visualize_graph(graph_obj, title=title, show=False, output_path=out_path)
+                best_score["best_graph_with_hc_bootstrap"] = (
+                    best_prob,
+                    copy.deepcopy(best_graph_bootstrap),
+                    hc_edge_orientation_probabilities,
+                )
+
+            if hc_bootstrap_output_dir:
+                os.makedirs(hc_bootstrap_output_dir, exist_ok=True)
+                top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
+                for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
+                    title = f"HC Bootstrap Graph {idx} (p={prob:.2f})"
+                    out_path = os.path.join(
+                        hc_bootstrap_output_dir, f"graph_{idx}.png"
+                    )
+                    visualize_graph(
+                        graph_obj, title=title, show=False, output_path=out_path
+                    )
 
     if hc_edge_orientation_probabilities:
         best_score["hc_edge_orientation_probabilities"] = (
