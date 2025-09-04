@@ -278,7 +278,7 @@ Retrieves the names of ordinal and nominal variables.
     - `background_knowledge` (`Optional[BackgroundKnowledge]`, default `None`): Background knowledge for FCI.
     - `alpha` (`float`, default `0.05`): Significance level for tests. Must be between `0.0` and `1.0`.
     - `max_path_length` (`int`, default `3`): Maximum path length for FCI. Must be non-negative.
-    - `fci_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run FCI on that many bootstrap samples to estimate edge orientation stability. The three most frequent bootstrapped graphs are saved under `fci_bootstrap/`.
+    - `fci_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run FCI on that many bootstrap samples to estimate edge orientation stability. The three bootstrapped graphs with the highest product of edge orientation probabilities are saved under `fci_bootstrap/`.
     - `fci_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the FCI bootstrap resampling procedure.
 
 - **Validations:**
@@ -325,7 +325,7 @@ Retrieves the names of ordinal and nominal variables.
         - `'sem-climbing'`: Structural Equation Modeling with Hill Climbing search of the best graph.
     - `directed` (`bool`, default `True`): Indicates if the method uses a directed graph.
     - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters for the method.
-    - `hc_bootstrap_resamples` (`int`, default `0`): Number of bootstrap resamples for SEM hill climbing to estimate edge orientation stability. When greater than `0`, the three most frequent bootstrapped graphs are saved under `sem_hc_bootstrap/`.
+    - `hc_bootstrap_resamples` (`int`, default `0`): Number of bootstrap resamples for SEM hill climbing to estimate edge orientation stability. When greater than `0`, the three bootstrapped graphs with the highest product of edge orientation probabilities are saved under `sem_hc_bootstrap/`.
     - `hc_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the SEM hill-climb bootstrap procedure.
 
 ---
@@ -488,7 +488,7 @@ search_best_graph_climber(
     - `forbid_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional blocklist of pairs.
     - `same_occasion_regex` (`Optional[str]`, default `None`): Regex enforcing same-occasion pairs unless whitelisted.
     - `respect_pag` (`bool`, default `False`): When `True`, the search preserves PAG marks (no change to ↔, →, —; only resolves circle endpoints consistent with PAG semantics).
-    - `hc_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run the SEM hill climber on bootstrap resamples to estimate orientation probabilities after hill climbing. The three most common bootstrapped graphs are stored in `sem_hc_bootstrap/`.
+    - `hc_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run the SEM hill climber on bootstrap resamples to estimate orientation probabilities after hill climbing. The three bootstrapped graphs with the highest product of edge orientation probabilities are stored in `sem_hc_bootstrap/`.
     - `hc_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the hill-climb bootstrap resampling procedure.
     - `**kwargs`: Additional keyword arguments.
 
