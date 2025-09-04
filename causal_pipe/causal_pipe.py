@@ -436,7 +436,7 @@ class CausalPipe:
                 )
                 self.directed_graph = graph_fci
 
-                if self.skeleton_method.fci_bootstrap_resamples > 0:
+                if self.orientation_method.fci_bootstrap_resamples > 0:
                     fci_kwargs = dict(
                         alpha=self.orientation_method.alpha,
                         knowledge=self.orientation_method.background_knowledge,
@@ -445,8 +445,8 @@ class CausalPipe:
                     )
                     self.fci_edge_orientation_probabilities = bootstrap_fci_edge_stability(
                         df,
-                        resamples=self.skeleton_method.fci_bootstrap_resamples,
-                        random_state=self.skeleton_method.fci_bootstrap_random_state,
+                        resamples=self.orientation_method.fci_bootstrap_resamples,
+                        random_state=self.orientation_method.fci_bootstrap_random_state,
                         fci_kwargs=fci_kwargs,
                         output_dir=os.path.join(
                             self.output_path, "fci_bootstrap"
