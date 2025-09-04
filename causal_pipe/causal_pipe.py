@@ -32,6 +32,8 @@ from causal_pipe.utilities.graph_utilities import (
     general_graph_to_sem_model,
     get_nodes_from_node_names,
     add_edge_coefficients_from_sem_fit,
+    add_edge_coefficients_and_probabilities_from_sem_fit,
+    add_edge_probabilities_to_graph,
 )
 from causal_pipe.utilities.plot_utilities import plot_correlation_graph
 from .pipe_config import (
@@ -443,7 +445,10 @@ class CausalPipe:
                         max_path_length=self.orientation_method.max_path_length,
                         independence_test_method=self.orientation_method.conditional_independence_method,
                     )
-                    self.fci_edge_orientation_probabilities = bootstrap_fci_edge_stability(
+                    (
+                        self.fci_edge_orientation_probabilities,
+                        self.best_graph_with_fci_bootstrap,
+                    ) = bootstrap_fci_edge_stability(
                         df,
                         resamples=self.orientation_method.fci_bootstrap_resamples,
                         random_state=self.orientation_method.fci_bootstrap_random_state,
@@ -452,6 +457,25 @@ class CausalPipe:
                             self.output_path, "fci_bootstrap"
                         ),
                     )
+                    if self.best_graph_with_fci_bootstrap:
+                        prob, best_graph_bootstrap, edge_probs = (
+                            self.best_graph_with_fci_bootstrap
+                        )
+                        prob_graph, edges_with_probabilities = add_edge_probabilities_to_graph(
+                            best_graph_bootstrap, edge_probs
+                        )
+                        visualize_graph(
+                            prob_graph,
+                            edges=edges_with_probabilities,
+                            title=f"Best FCI Bootstrap Graph (p={prob:.2f})",
+                            labels=dict(zip(range(len(df.columns)), df.columns)),
+                            show=show_plot,
+                            output_path=os.path.join(
+                                self.output_path,
+                                "fci_bootstrap",
+                                "best_graph.png",
+                            ),
+                        )
             elif isinstance(self.orientation_method, HillClimbingOrientationMethod):
                 bcsl = BCSL(
                     data=df,
@@ -677,6 +701,30 @@ class CausalPipe:
                             out_sem_dir, "best_graph_with_coefficients.png"
                         ),
                     )
+                    if sem_results.get("best_graph_with_hc_bootstrap"):
+                        prob_hc, best_graph_hc, edge_probs_hc = sem_results[
+                            "best_graph_with_hc_bootstrap"
+                        ]
+                        (
+                            coef_prob_graph,
+                            edges_with_coef_prob,
+                        ) = add_edge_coefficients_and_probabilities_from_sem_fit(
+                            best_graph_hc,
+                            model_output=self.causal_effects[method.name][
+                                "summary"
+                            ],
+                            edge_probabilities=edge_probs_hc,
+                        )
+                        visualize_graph(
+                            coef_prob_graph,
+                            edges=edges_with_coef_prob,
+                            title=f"Best HC Bootstrap Graph (p={prob_hc:.2f}) With Coefficients and Probabilities",
+                            labels=dict(zip(range(len(df.columns)), df.columns)),
+                            show=show_plot,
+                            output_path=os.path.join(
+                                out_sem_dir, "best_graph_with_hc_bootstrap.png"
+                            ),
+                        )
                     if sem_results is None:
                         sem_results = {"fit_summary": "Failure"}
                     dump_json_to(
