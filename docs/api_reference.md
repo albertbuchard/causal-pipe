@@ -196,12 +196,9 @@ Retrieves the names of ordinal and nominal variables.
         - `"mv_fisherz"`
     - `alpha` (`float`, default `0.05`): Significance level for tests. Must be between `0.0` and `1.0`.
     - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters.
-    - `fci_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run FCI on that many bootstrap samples to estimate edge orientation stability. The three most frequent bootstrapped graphs are saved under `fci_bootstrap/`.
-    - `fci_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the FCI bootstrap resampling procedure.
 
 - **Validations:**
     - `alpha` must be between `0.0` and `1.0`.
-    - `fci_bootstrap_resamples` must be non-negative.
 
 ---
 
@@ -281,10 +278,13 @@ Retrieves the names of ordinal and nominal variables.
     - `background_knowledge` (`Optional[BackgroundKnowledge]`, default `None`): Background knowledge for FCI.
     - `alpha` (`float`, default `0.05`): Significance level for tests. Must be between `0.0` and `1.0`.
     - `max_path_length` (`int`, default `3`): Maximum path length for FCI. Must be non-negative.
+    - `fci_bootstrap_resamples` (`int`, default `0`): If greater than `0`, run FCI on that many bootstrap samples to estimate edge orientation stability. The three most frequent bootstrapped graphs are saved under `fci_bootstrap/`.
+    - `fci_bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the FCI bootstrap resampling procedure.
 
 - **Validations:**
     - `alpha` must be between `0.0` and `1.0`.
     - `max_path_length` must be non-negative.
+    - `fci_bootstrap_resamples` must be non-negative.
 
 - **Configuration:**
     - `arbitrary_types_allowed = True` (Allows non-Pydantic types like `BackgroundKnowledge`)
@@ -783,6 +783,8 @@ class FCIOrientationMethod(OrientationMethod):
     background_knowledge: Optional[BackgroundKnowledge] = None
     alpha: float = 0.05
     max_path_length: int = 3
+    fci_bootstrap_resamples: int = 0
+    fci_bootstrap_random_state: Optional[int] = None
 
     # Validation for alpha
     @field_validator("alpha")
@@ -798,6 +800,13 @@ class FCIOrientationMethod(OrientationMethod):
     def check_max_path_length(cls, v):
         if v < 0:
             raise ValueError("max_path_length must be non-negative")
+        return v
+
+    @field_validator("fci_bootstrap_resamples")
+    @classmethod
+    def check_fci_bootstrap_resamples(cls, v):
+        if v < 0:
+            raise ValueError("fci_bootstrap_resamples must be non-negative")
         return v
 
     class Config:
