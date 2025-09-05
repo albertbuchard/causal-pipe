@@ -1090,6 +1090,7 @@ def search_best_graph_climber(
     baseline_score = best_score.copy()
 
     hc_edge_orientation_probabilities: Dict[Tuple[str, str], Dict[str, float]] = {}
+    top_graphs: List[Tuple[float, GeneralGraph]] = []
     if hc_bootstrap_resamples and hc_bootstrap_resamples > 0:
         n = data.shape[0]
         rng = np.random.RandomState(hc_bootstrap_random_state)
@@ -1182,6 +1183,8 @@ def search_best_graph_climber(
         best_score["hc_edge_orientation_probabilities"] = (
             hc_edge_orientation_probabilities
         )
+    if top_graphs:
+        best_score["best_graph_with_hc_bootstrap"] = top_graphs[0]
 
     if finalize_with_resid_covariances:
         # Preserve the original score before any augmentation
