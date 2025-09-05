@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.search.ConstraintBased.FCI import fci
+from causallearn.utils.FAS import fas
+from causallearn.utils.cit import CIT
 
 from causal_pipe.causal_discovery.static_causal_discovery import visualize_graph
 from causal_pipe.sem.hill_climber import GraphHillClimber
@@ -14,6 +16,7 @@ from causal_pipe.utilities.graph_utilities import (
     dataframe_to_json_compatible_list,
     general_graph_to_sem_model,
     get_neighbors_general_graph,
+    get_nodes_from_node_names,
 )
 from causal_pipe.utilities.model_comparison_utilities import (
     BETTER_MODEL_1,
@@ -877,6 +880,93 @@ def nodes_names_from_data(data: pd.DataFrame) -> List[str]:
         raise ValueError(
             "Unsupported data type. Please provide a pandas DataFrame or numpy array."
         )
+
+
+def bootstrap_fas_edge_stability(
+    data: pd.DataFrame,
+    resamples: int,
+    *,
+    random_state: Optional[int] = None,
+    fas_kwargs: Optional[Dict[str, Any]] = None,
+    output_dir: Optional[str] = None,
+) -> Tuple[Dict[Tuple[str, str], float], Optional[Tuple[float, GeneralGraph, Dict[Tuple[str, str], float]]]]:
+    """Estimate edge presence probabilities via bootstrapped FAS runs."""
+
+    if resamples <= 0:
+        return {}, None
+
+    n = data.shape[0]
+    rng = np.random.RandomState(random_state)
+    counts: Dict[Tuple[str, str], int] = {}
+    graph_counts: Dict[Tuple[Tuple[str, str], ...], Tuple[int, GeneralGraph]] = {}
+    fas_kwargs = fas_kwargs or {}
+
+    node_names = list(data.columns)
+    nodes = get_nodes_from_node_names(node_names=node_names)
+    ci_method = fas_kwargs.pop("conditional_independence_method", "fisherz")
+
+    for _ in range(resamples):
+        sample = data.sample(n=n, replace=True, random_state=rng.randint(0, 2**32))
+        cit = CIT(data=sample.values, method=ci_method)
+        g, _, _ = fas(
+            data=sample.values,
+            nodes=nodes,
+            independence_test_method=cit,
+            **fas_kwargs,
+        )
+
+        edges_repr = []
+        for edge in g.get_graph_edges():
+            n1 = edge.get_node1().get_name()
+            n2 = edge.get_node2().get_name()
+            if n1 <= n2:
+                pair = (n1, n2)
+            else:
+                pair = (n2, n1)
+            counts[pair] = counts.get(pair, 0) + 1
+            edges_repr.append(pair)
+
+        key = tuple(sorted(edges_repr))
+        if key in graph_counts:
+            graph_counts[key] = (graph_counts[key][0] + 1, graph_counts[key][1])
+        else:
+            graph_counts[key] = (1, copy.deepcopy(g))
+
+    probs = {edge: c / resamples for edge, c in counts.items()}
+
+    if probs:
+        print("Edge presence probabilities from FAS bootstrap:")
+        for (a, b), p in probs.items():
+            print(f"  {a} -- {b}: {p:.2f}")
+
+    best_graph_with_bootstrap = None
+    graph_probs: List[Tuple[float, GeneralGraph]] = []
+    if graph_counts:
+        for edges_repr, (_, graph_obj) in graph_counts.items():
+            prob = 1.0
+            for n1, n2 in edges_repr:
+                prob *= probs.get((n1, n2), 0.0)
+            graph_probs.append((prob, graph_obj))
+
+        if graph_probs:
+            best_prob, best_graph = max(graph_probs, key=lambda x: x[0])
+            best_graph_with_bootstrap = (
+                best_prob,
+                copy.deepcopy(best_graph),
+                probs,
+            )
+
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
+            for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
+                title = f"Bootstrap Graph {idx} (p={prob:.2f})"
+                out_path = os.path.join(output_dir, f"graph_{idx}.png")
+                visualize_graph(
+                    graph_obj, title=title, show=False, output_path=out_path
+                )
+
+    return probs, best_graph_with_bootstrap
 
 
 def bootstrap_fci_edge_stability(

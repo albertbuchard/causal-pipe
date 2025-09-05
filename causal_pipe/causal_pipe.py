@@ -25,6 +25,7 @@ from causal_pipe.sem.sem import (
     fit_sem_lavaan,
     search_best_graph_climber,
     bootstrap_fci_edge_stability,
+    bootstrap_fas_edge_stability,
 )
 from causal_pipe.utilities.graph_utilities import (
     copy_graph,
@@ -376,6 +377,47 @@ class CausalPipe:
                         self.output_path, "FAS_Global_Skeleton.png"
                     ),
                 )
+                if self.skeleton_method.bootstrap_resamples > 0:
+                    fas_kwargs = dict(
+                        alpha=self.skeleton_method.alpha,
+                        depth=self.skeleton_method.depth,
+                        knowledge=self.skeleton_method.knowledge,
+                        conditional_independence_method=self.skeleton_method.conditional_independence_method,
+                    )
+                    (
+                        self.fas_edge_probabilities,
+                        self.best_graph_with_fas_bootstrap,
+                    ) = bootstrap_fas_edge_stability(
+                        df,
+                        resamples=self.skeleton_method.bootstrap_resamples,
+                        random_state=self.skeleton_method.bootstrap_random_state,
+                        fas_kwargs=fas_kwargs,
+                        output_dir=os.path.join(
+                            self.output_path, "fas_bootstrap"
+                        ),
+                    )
+                    if self.best_graph_with_fas_bootstrap:
+                        prob, best_graph_bootstrap, edge_probs = (
+                            self.best_graph_with_fas_bootstrap
+                        )
+                        oriented_probs = {
+                            k: {"TAIL-TAIL": v} for k, v in edge_probs.items()
+                        }
+                        prob_graph, edges_with_probabilities = add_edge_probabilities_to_graph(
+                            best_graph_bootstrap, oriented_probs
+                        )
+                        visualize_graph(
+                            prob_graph,
+                            edges=edges_with_probabilities,
+                            title=f"Best FAS Bootstrap Graph (p={prob:.2f})",
+                            labels=dict(zip(range(len(df.columns)), df.columns)),
+                            show=show_plots,
+                            output_path=os.path.join(
+                                self.output_path,
+                                "fas_bootstrap",
+                                "best_graph.png",
+                            ),
+                        )
             else:
                 raise ValueError(
                     f"Unsupported skeleton method: {self.skeleton_method.name}"
@@ -438,7 +480,7 @@ class CausalPipe:
                 )
                 self.directed_graph = graph_fci
 
-                if self.orientation_method.fci_bootstrap_resamples > 0:
+                if self.orientation_method.bootstrap_resamples > 0:
                     fci_kwargs = dict(
                         alpha=self.orientation_method.alpha,
                         knowledge=self.orientation_method.background_knowledge,
@@ -450,8 +492,8 @@ class CausalPipe:
                         self.best_graph_with_fci_bootstrap,
                     ) = bootstrap_fci_edge_stability(
                         df,
-                        resamples=self.orientation_method.fci_bootstrap_resamples,
-                        random_state=self.orientation_method.fci_bootstrap_random_state,
+                        resamples=self.orientation_method.bootstrap_resamples,
+                        random_state=self.orientation_method.bootstrap_random_state,
                         fci_kwargs=fci_kwargs,
                         output_dir=os.path.join(
                             self.output_path, "fci_bootstrap"

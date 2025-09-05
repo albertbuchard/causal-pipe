@@ -141,12 +141,21 @@ class SkeletonMethod(BaseModel):
     )
     alpha: float = 0.05
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    bootstrap_resamples: int = 0
+    bootstrap_random_state: Optional[int] = None
 
     @field_validator("alpha")
     @classmethod
     def check_alpha(cls, v):
         if not (0.0 < v < 1.0):
             raise ValueError("alpha must be between 0.0 and 1.0")
+        return v
+
+    @field_validator("bootstrap_resamples")
+    @classmethod
+    def check_bootstrap_resamples(cls, v):
+        if v < 0:
+            raise ValueError("bootstrap_resamples must be non-negative")
         return v
 
 
@@ -219,9 +228,18 @@ class OrientationMethod(BaseModel):
     conditional_independence_method: ConditionalIndependenceMethodEnum = (
         ConditionalIndependenceMethodEnum.FISHERZ
     )
+    bootstrap_resamples: int = 0
+    bootstrap_random_state: Optional[int] = None
 
     class Config:
         validate_assignment = True
+
+    @field_validator("bootstrap_resamples")
+    @classmethod
+    def check_bootstrap_resamples(cls, v):
+        if v < 0:
+            raise ValueError("bootstrap_resamples must be non-negative")
+        return v
 
 
 class FCIOrientationMethod(OrientationMethod):
@@ -233,8 +251,6 @@ class FCIOrientationMethod(OrientationMethod):
     background_knowledge: Optional[BackgroundKnowledge] = None
     alpha: float = 0.05
     max_path_length: int = 3
-    fci_bootstrap_resamples: int = 0
-    fci_bootstrap_random_state: Optional[int] = None
 
     @field_validator("alpha")
     @classmethod
@@ -248,13 +264,6 @@ class FCIOrientationMethod(OrientationMethod):
     def check_max_path_length(cls, v):
         if v < 0:
             raise ValueError("max_path_length must be non-negative")
-        return v
-
-    @field_validator("fci_bootstrap_resamples")
-    @classmethod
-    def check_fci_bootstrap_resamples(cls, v):
-        if v < 0:
-            raise ValueError("fci_bootstrap_resamples must be non-negative")
         return v
 
     class Config:
