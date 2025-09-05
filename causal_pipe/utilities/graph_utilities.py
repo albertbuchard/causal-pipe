@@ -978,13 +978,15 @@ def graph_with_coefficient_to_pydot(
             if probability is not None:
                 prob_pct = probability * 100
                 if parts:
-                    parts[-1] = f"{parts[-1]} (p_b={prob_pct:.0f}%)"
+                    parts[-1] = f"{parts[-1]} ({prob_pct:.0f}%)"
                 else:
-                    parts.append(f"p_b={prob_pct:.0f}%")
+                    parts.append(f"{prob_pct:.0f}%")
             if parts:
                 label = " ".join(parts)
                 dot_edge.set_label(label)
                 dot_edge.set_color(color)
+                if coefficient is not None:
+                    dot_edge.set_fontsize("10")
 
         # Optional: Handle other edge properties (e.g., penwidth, style)
         # Example:
