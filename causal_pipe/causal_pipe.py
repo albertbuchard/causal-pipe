@@ -397,9 +397,11 @@ class CausalPipe:
                         ),
                     )
                     if self.best_graph_with_fas_bootstrap:
-                        prob, best_graph_bootstrap, edge_probs = (
+                        prob, best_graph_bootstrap, edge_probs, sepsets_bootstrap = (
                             self.best_graph_with_fas_bootstrap
                         )
+                        self.undirected_graph = best_graph_bootstrap
+                        self.sepsets = sepsets_bootstrap
                         oriented_probs = {
                             k: {"TAIL-TAIL": v} for k, v in edge_probs.items()
                         }
@@ -483,9 +485,10 @@ class CausalPipe:
                 if self.orientation_method.bootstrap_resamples > 0:
                     fci_kwargs = dict(
                         alpha=self.orientation_method.alpha,
-                        knowledge=self.orientation_method.background_knowledge,
+                        background_knowledge=self.orientation_method.background_knowledge,
                         max_path_length=self.orientation_method.max_path_length,
                         independence_test_method=self.orientation_method.conditional_independence_method,
+                        verbose=self.verbose,
                     )
                     (
                         self.fci_edge_orientation_probabilities,
@@ -493,6 +496,9 @@ class CausalPipe:
                     ) = bootstrap_fci_edge_stability(
                         df,
                         resamples=self.orientation_method.bootstrap_resamples,
+                        graph=self.undirected_graph,
+                        nodes=self.undirected_graph.nodes,
+                        sepsets=self.sepsets,
                         random_state=self.orientation_method.bootstrap_random_state,
                         fci_kwargs=fci_kwargs,
                         output_dir=os.path.join(
@@ -503,6 +509,7 @@ class CausalPipe:
                         prob, best_graph_bootstrap, edge_probs = (
                             self.best_graph_with_fci_bootstrap
                         )
+                        self.directed_graph = best_graph_bootstrap
                         prob_graph, edges_with_probabilities = add_edge_probabilities_to_graph(
                             best_graph_bootstrap, edge_probs
                         )

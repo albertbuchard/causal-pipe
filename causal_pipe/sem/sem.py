@@ -1,5 +1,5 @@
 import warnings
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict, Any, Set
 
 import copy
 import os
@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.search.ConstraintBased.FCI import fci
+from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
 from causallearn.utils.FAS import fas
 from causallearn.utils.cit import CIT
 
@@ -17,6 +18,7 @@ from causal_pipe.utilities.graph_utilities import (
     general_graph_to_sem_model,
     get_neighbors_general_graph,
     get_nodes_from_node_names,
+    copy_graph,
 )
 from causal_pipe.utilities.model_comparison_utilities import (
     BETTER_MODEL_1,
@@ -889,8 +891,28 @@ def bootstrap_fas_edge_stability(
     random_state: Optional[int] = None,
     fas_kwargs: Optional[Dict[str, Any]] = None,
     output_dir: Optional[str] = None,
-) -> Tuple[Dict[Tuple[str, str], float], Optional[Tuple[float, GeneralGraph, Dict[Tuple[str, str], float]]]]:
-    """Estimate edge presence probabilities via bootstrapped FAS runs."""
+) -> Tuple[
+    Dict[Tuple[str, str], float],
+    Optional[
+        Tuple[
+            float,
+            GeneralGraph,
+            Dict[Tuple[str, str], float],
+            Dict[Tuple[int, int], Set[int]],
+        ]
+    ],
+]:
+    """Estimate edge presence probabilities via bootstrapped FAS runs.
+
+    Returns
+    -------
+    Tuple
+        - Mapping from unordered node pairs to edge presence probabilities across
+          bootstrap runs.
+        - Information about the most probable bootstrapped graph as a tuple
+          ``(probability, graph, edge_probabilities, sepsets)`` or ``None`` if no
+          graphs were generated.
+    """
 
     if resamples <= 0:
         return {}, None
@@ -898,7 +920,9 @@ def bootstrap_fas_edge_stability(
     n = data.shape[0]
     rng = np.random.RandomState(random_state)
     counts: Dict[Tuple[str, str], int] = {}
-    graph_counts: Dict[Tuple[Tuple[str, str], ...], Tuple[int, GeneralGraph]] = {}
+    graph_counts: Dict[
+        Tuple[Tuple[str, str], ...], Tuple[int, GeneralGraph, Dict[Tuple[int, int], Set[int]]]
+    ] = {}
     fas_kwargs = fas_kwargs or {}
 
     node_names = list(data.columns)
@@ -908,7 +932,7 @@ def bootstrap_fas_edge_stability(
     for _ in range(resamples):
         sample = data.sample(n=n, replace=True, random_state=rng.randint(0, 2**32))
         cit = CIT(data=sample.values, method=ci_method)
-        g, _, _ = fas(
+        g, sepsets, _ = fas(
             data=sample.values,
             nodes=nodes,
             independence_test_method=cit,
@@ -928,9 +952,13 @@ def bootstrap_fas_edge_stability(
 
         key = tuple(sorted(edges_repr))
         if key in graph_counts:
-            graph_counts[key] = (graph_counts[key][0] + 1, graph_counts[key][1])
+            graph_counts[key] = (
+                graph_counts[key][0] + 1,
+                graph_counts[key][1],
+                graph_counts[key][2],
+            )
         else:
-            graph_counts[key] = (1, copy.deepcopy(g))
+            graph_counts[key] = (1, copy.deepcopy(g), copy.deepcopy(sepsets))
 
     probs = {edge: c / resamples for edge, c in counts.items()}
 
@@ -940,7 +968,7 @@ def bootstrap_fas_edge_stability(
             print(f"  {a} -- {b}: {p:.2f}")
 
     best_graph_with_bootstrap = None
-    graph_probs: List[Tuple[float, GeneralGraph]] = []
+    graph_probs: List[Tuple[float, GeneralGraph, Dict[Tuple[int, int], Set[int]]]] = []
     if graph_counts:
         # for edges_repr, (_, graph_obj) in graph_counts.items():
         #     prob = 1.0
@@ -948,22 +976,27 @@ def bootstrap_fas_edge_stability(
         #         prob *= probs.get((n1, n2), 0.0)
         #     graph_probs.append((prob, graph_obj))
         # Graph probs is simply the frequency of the graph in bootstrap samples
-        for edges_repr, (count, graph_obj) in graph_counts.items():
-            prob = count / resamples
-            graph_probs.append((prob, graph_obj))
+        for edges_repr, (count, graph_obj, seps) in graph_counts.items():
+            prob = 1.0
+            for n1, n2 in edges_repr:
+                prob *= probs.get((n1, n2), 0.0)
+            graph_probs.append((prob, graph_obj, seps))
 
         if graph_probs:
-            best_prob, best_graph = max(graph_probs, key=lambda x: x[0])
+            best_prob, best_graph, best_sepsets = max(
+                graph_probs, key=lambda x: x[0]
+            )
             best_graph_with_bootstrap = (
                 best_prob,
                 copy.deepcopy(best_graph),
                 probs,
+                copy.deepcopy(best_sepsets),
             )
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
             top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
-            for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
+            for idx, (prob, graph_obj, _) in enumerate(top_graphs, start=1):
                 title = f"Bootstrap Graph {idx} (p={prob:.2f})"
                 out_path = os.path.join(output_dir, f"graph_{idx}.png")
                 visualize_graph(
@@ -977,10 +1010,16 @@ def bootstrap_fci_edge_stability(
     data: pd.DataFrame,
     resamples: int,
     *,
+    graph: GeneralGraph,
+    nodes,
+    sepsets: Dict[Tuple[int, int], Set[int]],
     random_state: Optional[int] = None,
     fci_kwargs: Optional[Dict[str, Any]] = None,
     output_dir: Optional[str] = None,
-) -> Tuple[Dict[Tuple[str, str], Dict[str, float]], Optional[Tuple[float, GeneralGraph, Dict[Tuple[str, str], Dict[str, float]]]]]:
+) -> Tuple[
+    Dict[Tuple[str, str], Dict[str, float]],
+    Optional[Tuple[float, GeneralGraph, Dict[Tuple[str, str], Dict[str, float]]]],
+]:
     """Estimate edge orientation probabilities via bootstrapped FCI runs.
 
     Parameters
@@ -990,10 +1029,17 @@ def bootstrap_fci_edge_stability(
     resamples : int
         Number of bootstrap resamples to draw. If ``resamples`` is ``0`` the
         function returns an empty dictionary.
+    graph : GeneralGraph
+        Unoriented graph to be used as the starting point for FCI orientation.
+    nodes : List
+        Node objects corresponding to the columns of ``data``.
+    sepsets : Dict[Tuple[int, int], Set[int]]
+        Separation sets associated with ``graph``.
     random_state : Optional[int], default ``None``
         Seed for the random number generator to ensure reproducibility.
     fci_kwargs : Optional[Dict[str, Any]], default ``None``
-        Additional keyword arguments passed directly to :func:`fci`.
+        Additional keyword arguments passed directly to
+        :func:`fci_orient_edges_from_graph_node_sepsets`.
     output_dir : Optional[str], default ``None``
         Directory to save the three bootstrapped graphs with the highest
         product of edge orientation probabilities. When ``None`` no graphs
@@ -1021,9 +1067,15 @@ def bootstrap_fci_edge_stability(
     graph_counts: Dict[Tuple[Tuple[str, str, str, str], ...], Tuple[int, GeneralGraph]] = {}
     fci_kwargs = fci_kwargs or {}
 
-    for i in range(resamples):
+    for _ in range(resamples):
         sample = data.sample(n=n, replace=True, random_state=rng.randint(0, 2**32))
-        g, _ = fci(sample.values, node_names=list(sample.columns), **fci_kwargs)
+        g, _ = fci_orient_edges_from_graph_node_sepsets(
+            data=sample.values,
+            graph=copy_graph(graph),
+            nodes=nodes,
+            sepsets=sepsets,
+            **fci_kwargs,
+        )
 
         edges_repr = []
         for edge in g.get_graph_edges():
