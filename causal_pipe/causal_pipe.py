@@ -714,9 +714,6 @@ class CausalPipe:
                         hc_bootstrap_random_state=method.params.get(
                             "hc_bootstrap_random_state"
                         ),
-                        hc_bootstrap_output_dir=os.path.join(
-                            self.output_path, "sem_hc_bootstrap"
-                        ),
                     )
                     self.causal_effects[method.name] = {
                         "best_graph": best_graph,
@@ -774,10 +771,57 @@ class CausalPipe:
                                 out_sem_dir, "best_graph_with_hc_bootstrap.png"
                             ),
                         )
+                    if sem_results.get("top_graphs_with_hc_bootstrap"):
+                        top_graphs = sem_results["top_graphs_with_hc_bootstrap"]
+                        edge_probs = sem_results.get("hc_bootstrap_edge_probabilities", {})
+                        for i, (prob, top_graph) in enumerate(top_graphs):
+                            (
+                                coef_prob_graph,
+                                edges_with_coef_prob,
+                            ) = add_edge_probabilities_to_graph(
+                                top_graph, edge_probs
+                            )
+                            visualize_graph(
+                                coef_prob_graph,
+                                edges=edges_with_coef_prob,
+                                title=f"Top {i+1} HC Bootstrap Graph (p={prob:.2f}) With Coefficients and Probabilities",
+                                labels=dict(
+                                    zip(range(len(df.columns)), df.columns)
+                                ),
+                                show=show_plot,
+                                output_path=os.path.join(
+                                    out_sem_dir,
+                                    f"top_{i+1}_graph_with_hc_bootstrap.png",
+                                ),
+                            )
                     if sem_results is None:
                         sem_results = {"fit_summary": "Failure"}
+                    # Keys to export
+                    keys_to_extract = [
+                        "estimator",
+                        "model_1_string",
+                        "fit_summary",
+                        "fit_measures",
+                        "unstandardized_parameter_estimates",
+                        "standardized_parameter_estimates",
+                        "measurement_model",
+                        "structural_model",
+                        "residual_covariances",
+                        "factor_scores",
+                        "r2",
+                        "log_likelihood",
+                        "log_likelihoods",
+                        "npar",
+                        "n_samples",
+                        "comparison_results",
+                        "is_better_model",
+                        "model_2_string"
+                    ]
+                    sem_results_to_dump = {
+                        k: v for k, v in sem_results.items() if k in keys_to_extract
+                    }
                     dump_json_to(
-                        data=sem_results,
+                        data=sem_results_to_dump,
                         path=os.path.join(out_sem_dir, "sem_climber_results.json"),
                     )
                     with open(os.path.join(out_sem_dir, "fit_summary.txt"), "w") as f:

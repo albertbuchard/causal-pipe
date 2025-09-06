@@ -835,6 +835,8 @@ def _attach_edge_probabilities(
             pair = (n2, n1)
             orient = f"{e2}-{e1}"
         edge.probability = edge_probabilities.get(pair, {}).get(orient)
+        if edge.probability is None:
+            print("Warning: missing probability for edge", pair, orient)
 
 
 def add_edge_coefficients_and_probabilities_from_sem_fit(
@@ -999,3 +1001,17 @@ def graph_with_coefficient_to_pydot(
         pydot_g.add_edge(dot_edge)
 
     return pydot_g
+
+
+def duplicate_circle_endpoints_probabilities(probs):
+    new_probs = {}
+    for (a, b), orient_probs in probs.items():
+        new_orient_probs = orient_probs.copy()
+        if "CIRCLE-ARROW" in orient_probs:
+            new_orient_probs["TAIL-ARROW"] = orient_probs["CIRCLE-ARROW"]
+        if "ARROW-CIRCLE" in orient_probs:
+            new_orient_probs["ARROW-TAIL"] = orient_probs["ARROW-CIRCLE"]
+        if "CIRCLE-CIRCLE" in orient_probs:
+            new_orient_probs["ARROW-ARROW"] = orient_probs["CIRCLE-CIRCLE"]
+        new_probs[(a, b)] = new_orient_probs
+    return new_probs

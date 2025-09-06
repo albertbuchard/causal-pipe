@@ -6,7 +6,6 @@ import os
 import numpy as np
 import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
-from causallearn.search.ConstraintBased.FCI import fci
 from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
 from causallearn.utils.FAS import fas
 from causallearn.utils.cit import CIT
@@ -18,7 +17,7 @@ from causal_pipe.utilities.graph_utilities import (
     general_graph_to_sem_model,
     get_neighbors_general_graph,
     get_nodes_from_node_names,
-    copy_graph,
+    copy_graph, duplicate_circle_endpoints_probabilities,
 )
 from causal_pipe.utilities.model_comparison_utilities import (
     BETTER_MODEL_1,
@@ -1114,13 +1113,6 @@ def bootstrap_fci_edge_stability(
     best_graph_with_bootstrap = None
     graph_probs: List[Tuple[float, GeneralGraph]] = []
     if graph_counts:
-        # for edges_repr, (_, graph_obj) in graph_counts.items():
-        #     prob = 1.0
-        #     for n1, n2, e1, e2 in edges_repr:
-        #         edge_probs = probs.get((n1, n2), {})
-        #         prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
-        #     graph_probs.append((prob, graph_obj))
-        # Graph probs is simply the frequency of the graph in bootstrap samples
         for edges_repr, (count, graph_obj) in graph_counts.items():
             prob = count / resamples
             graph_probs.append((prob, graph_obj))
@@ -1164,7 +1156,6 @@ def search_best_graph_climber(
     respect_pag: bool = False,
     hc_bootstrap_resamples: int = 0,
     hc_bootstrap_random_state: Optional[int] = None,
-    hc_bootstrap_output_dir: Optional[str] = None,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
     """
@@ -1293,21 +1284,20 @@ def search_best_graph_climber(
             edge: {o: c / hc_bootstrap_resamples for o, c in orient_counts.items()}
             for edge, orient_counts in counts.items()
         }
+
+        hc_edge_orientation_probabilities = duplicate_circle_endpoints_probabilities(
+            hc_edge_orientation_probabilities
+        )
+
         if hc_edge_orientation_probabilities:
             print("Hill-climb bootstrap edge orientation probabilities:")
             for (a, b), orient_probs in hc_edge_orientation_probabilities.items():
                 for orient, p in orient_probs.items():
                     edge_str = _format_oriented_edge(a, b, orient)
                     print(f"  {edge_str}: {p:.2f}")
+
         graph_probs: List[Tuple[float, GeneralGraph]] = []
         if graph_counts:
-            # for edges_repr, (_, graph_obj) in graph_counts.items():
-            #     prob = 1.0
-            #     for n1, n2, e1, e2 in edges_repr:
-            #         edge_probs = hc_edge_orientation_probabilities.get((n1, n2), {})
-            #         prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
-            #     graph_probs.append((prob, graph_obj))
-            # Graph probs is simply the frequency of the graph in bootstrap samples
             for edges_repr, (count, graph_obj) in graph_counts.items():
                 prob = count / hc_bootstrap_resamples
                 graph_probs.append((prob, graph_obj))
@@ -1330,20 +1320,9 @@ def search_best_graph_climber(
                 best_score["top_graphs_with_hc_bootstrap"] = [
                     (score, copy.deepcopy(g)) for score, g in sorted_graphs[:3]
                 ]
+                best_score["hc_bootstrap_edge_probabilities"] = hc_edge_orientation_probabilities
             else:
                 raise RuntimeError("No graphs were generated during hill-climb bootstrapping.")
-
-            if hc_bootstrap_output_dir:
-                os.makedirs(hc_bootstrap_output_dir, exist_ok=True)
-                top_graphs = sorted(graph_probs, key=lambda x: x[0], reverse=True)[:3]
-                for idx, (prob, graph_obj) in enumerate(top_graphs, start=1):
-                    title = f"HC Bootstrap Graph {idx} (p={prob:.2f})"
-                    out_path = os.path.join(
-                        hc_bootstrap_output_dir, f"graph_{idx}.png"
-                    )
-                    visualize_graph(
-                        graph_obj, title=title, show=False, output_path=out_path
-                    )
 
             if hc_edge_orientation_probabilities:
                 best_score["hc_edge_orientation_probabilities"] = (
