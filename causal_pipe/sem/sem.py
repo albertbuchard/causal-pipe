@@ -942,10 +942,14 @@ def bootstrap_fas_edge_stability(
     best_graph_with_bootstrap = None
     graph_probs: List[Tuple[float, GeneralGraph]] = []
     if graph_counts:
-        for edges_repr, (_, graph_obj) in graph_counts.items():
-            prob = 1.0
-            for n1, n2 in edges_repr:
-                prob *= probs.get((n1, n2), 0.0)
+        # for edges_repr, (_, graph_obj) in graph_counts.items():
+        #     prob = 1.0
+        #     for n1, n2 in edges_repr:
+        #         prob *= probs.get((n1, n2), 0.0)
+        #     graph_probs.append((prob, graph_obj))
+        # Graph probs is simply the frequency of the graph in bootstrap samples
+        for edges_repr, (count, graph_obj) in graph_counts.items():
+            prob = count / resamples
             graph_probs.append((prob, graph_obj))
 
         if graph_probs:

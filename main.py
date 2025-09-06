@@ -32,8 +32,8 @@ if __name__ == "__main__":
     config = CausalPipeConfig(
         variable_types=VariableTypes(continuous=[], ordinal=[], nominal=[]),
         preprocessing_params=preprocessor_params,
-        skeleton_method=FASSkeletonMethod(),
-        orientation_method=FCIOrientationMethod(fci_bootstrap_resamples=20),
+        skeleton_method=FASSkeletonMethod(bootstrap_resamples=50),
+        orientation_method=FCIOrientationMethod(bootstrap_resamples=20),
         causal_effect_methods=[
             # Best method - Respect FCI Edge Directions - No Climbing
             CausalEffectMethod(name="sem", directed=True, params={"estimator": "MLR"}),
