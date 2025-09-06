@@ -977,9 +977,7 @@ def bootstrap_fas_edge_stability(
         #     graph_probs.append((prob, graph_obj))
         # Graph probs is simply the frequency of the graph in bootstrap samples
         for edges_repr, (count, graph_obj, seps) in graph_counts.items():
-            prob = 1.0
-            for n1, n2 in edges_repr:
-                prob *= probs.get((n1, n2), 0.0)
+            prob = count / resamples
             graph_probs.append((prob, graph_obj, seps))
 
         if graph_probs:
@@ -1116,11 +1114,15 @@ def bootstrap_fci_edge_stability(
     best_graph_with_bootstrap = None
     graph_probs: List[Tuple[float, GeneralGraph]] = []
     if graph_counts:
-        for edges_repr, (_, graph_obj) in graph_counts.items():
-            prob = 1.0
-            for n1, n2, e1, e2 in edges_repr:
-                edge_probs = probs.get((n1, n2), {})
-                prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
+        # for edges_repr, (_, graph_obj) in graph_counts.items():
+        #     prob = 1.0
+        #     for n1, n2, e1, e2 in edges_repr:
+        #         edge_probs = probs.get((n1, n2), {})
+        #         prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
+        #     graph_probs.append((prob, graph_obj))
+        # Graph probs is simply the frequency of the graph in bootstrap samples
+        for edges_repr, (count, graph_obj) in graph_counts.items():
+            prob = count / resamples
             graph_probs.append((prob, graph_obj))
 
         if graph_probs:
@@ -1231,13 +1233,16 @@ def search_best_graph_climber(
 
     # Run hill-climbing starting from the initial graph
     initial_graph_copy = copy.deepcopy(initial_graph)
-    best_graph = hill_climber.run(initial_graph=initial_graph_copy, max_iter=max_iter)
-    best_score = sem_score.exhaustive_results(best_graph)
-    baseline_score = best_score.copy()
-
-    hc_edge_orientation_probabilities: Dict[Tuple[str, str], Dict[str, float]] = {}
-    top_graphs: List[Tuple[float, GeneralGraph]] = []
-    if hc_bootstrap_resamples and hc_bootstrap_resamples > 0:
+    best_score = {}
+    best_graph = None
+    baseline_score = None
+    if not hc_bootstrap_resamples:
+        best_graph = hill_climber.run(initial_graph=initial_graph_copy, max_iter=max_iter)
+        best_score = sem_score.exhaustive_results(best_graph)
+        baseline_score = best_score.copy()
+    elif not isinstance(hc_bootstrap_resamples, int) or hc_bootstrap_resamples < 0:
+        raise ValueError("hc_bootstrap_resamples must be a non-negative integer.")
+    else:
         n = data.shape[0]
         rng = np.random.RandomState(hc_bootstrap_random_state)
         counts: Dict[Tuple[str, str], Dict[str, int]] = {}
@@ -1296,22 +1301,36 @@ def search_best_graph_climber(
                     print(f"  {edge_str}: {p:.2f}")
         graph_probs: List[Tuple[float, GeneralGraph]] = []
         if graph_counts:
-            for edges_repr, (_, graph_obj) in graph_counts.items():
-                prob = 1.0
-                for n1, n2, e1, e2 in edges_repr:
-                    edge_probs = hc_edge_orientation_probabilities.get((n1, n2), {})
-                    prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
+            # for edges_repr, (_, graph_obj) in graph_counts.items():
+            #     prob = 1.0
+            #     for n1, n2, e1, e2 in edges_repr:
+            #         edge_probs = hc_edge_orientation_probabilities.get((n1, n2), {})
+            #         prob *= edge_probs.get(f"{e1}-{e2}", 0.0)
+            #     graph_probs.append((prob, graph_obj))
+            # Graph probs is simply the frequency of the graph in bootstrap samples
+            for edges_repr, (count, graph_obj) in graph_counts.items():
+                prob = count / hc_bootstrap_resamples
                 graph_probs.append((prob, graph_obj))
 
             if graph_probs:
                 best_prob, best_graph_bootstrap = max(
                     graph_probs, key=lambda x: x[0]
                 )
+                best_score = sem_score.exhaustive_results(best_graph_bootstrap)
+                baseline_score = best_score.copy()
                 best_score["best_graph_with_hc_bootstrap"] = (
                     best_prob,
                     copy.deepcopy(best_graph_bootstrap),
                     hc_edge_orientation_probabilities,
                 )
+                sorted_graphs = sorted(
+                    graph_probs, key=lambda x: x[0], reverse=True
+                )
+                best_score["top_graphs_with_hc_bootstrap"] = [
+                    (score, copy.deepcopy(g)) for score, g in sorted_graphs[:3]
+                ]
+            else:
+                raise RuntimeError("No graphs were generated during hill-climb bootstrapping.")
 
             if hc_bootstrap_output_dir:
                 os.makedirs(hc_bootstrap_output_dir, exist_ok=True)
@@ -1325,12 +1344,13 @@ def search_best_graph_climber(
                         graph_obj, title=title, show=False, output_path=out_path
                     )
 
-    if hc_edge_orientation_probabilities:
-        best_score["hc_edge_orientation_probabilities"] = (
-            hc_edge_orientation_probabilities
-        )
-    if top_graphs:
-        best_score["best_graph_with_hc_bootstrap"] = top_graphs[0]
+            if hc_edge_orientation_probabilities:
+                best_score["hc_edge_orientation_probabilities"] = (
+                    hc_edge_orientation_probabilities
+                )
+
+    if best_graph is None:
+        raise RuntimeError("Hill climbing did not produce a best graph.")
 
     if finalize_with_resid_covariances:
         # Preserve the original score before any augmentation
