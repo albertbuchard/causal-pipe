@@ -1316,7 +1316,8 @@ def search_best_graph_climber(
                 best_prob, best_graph_bootstrap = max(
                     graph_probs, key=lambda x: x[0]
                 )
-                best_score = sem_score.exhaustive_results(best_graph_bootstrap)
+                best_graph = copy.deepcopy(best_graph_bootstrap)
+                best_score = sem_score.exhaustive_results(best_graph)
                 baseline_score = best_score.copy()
                 best_score["best_graph_with_hc_bootstrap"] = (
                     best_prob,

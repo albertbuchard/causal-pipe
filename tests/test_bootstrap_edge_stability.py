@@ -188,10 +188,10 @@ def test_fci_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
     first_graph, first_title = captured[0]
     second_graph, second_title = captured[1]
 
-    assert len(first_graph.get_graph_edges()) == 1
-    assert "p=1.00" in first_title
-    assert len(second_graph.get_graph_edges()) == 2
-    assert "p=0.67" in second_title
+    assert len(first_graph.get_graph_edges()) == 2
+    assert "p=0.67" in first_title
+    assert len(second_graph.get_graph_edges()) == 1
+    assert "p=0.33" in second_title
 
 
 def test_fas_bootstrap_saves_graph_with_highest_edge_probability_product(monkeypatch, tmp_path):
@@ -254,10 +254,10 @@ def test_fas_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
     first_graph, first_title = captured[0]
     second_graph, second_title = captured[1]
 
-    assert len(first_graph.get_graph_edges()) == 1
-    assert "p=1.00" in first_title
-    assert len(second_graph.get_graph_edges()) == 2
-    assert "p=0.67" in second_title
+    assert len(first_graph.get_graph_edges()) == 2
+    assert "p=0.67" in first_title
+    assert len(second_graph.get_graph_edges()) == 1
+    assert "p=0.33" in second_title
 
 
 def test_hc_bootstrap_saves_graph_with_highest_edge_probability_product(monkeypatch, tmp_path):
@@ -334,7 +334,7 @@ def test_hc_bootstrap_saves_graph_with_highest_edge_probability_product(monkeypa
     first_graph, first_title = captured[0]
     second_graph, second_title = captured[1]
 
-    assert len(first_graph.get_graph_edges()) == 1
-    assert "p=1.00" in first_title
-    assert len(second_graph.get_graph_edges()) == 2
-    assert "p=0.67" in second_title
+    assert len(first_graph.get_graph_edges()) == 2
+    assert "p=0.67" in first_title
+    assert len(second_graph.get_graph_edges()) == 1
+    assert "p=0.33" in second_title
