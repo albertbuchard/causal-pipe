@@ -16,6 +16,9 @@ from causal_pipe.sem.sem import (
     search_best_graph_climber,
 )
 from causallearn.search.ConstraintBased.FCI import fci
+from causallearn.utils.FAS import fas
+from causallearn.utils.cit import CIT
+from causal_pipe.utilities.graph_utilities import get_nodes_from_node_names
 import pytest
 
 
@@ -27,8 +30,32 @@ def test_bootstrap_fci_edge_stability_returns_probabilities():
     c = b + np.random.randn(n) * 0.1
     data = pd.DataFrame({"A": a, "B": b, "C": c})
 
+    nodes = get_nodes_from_node_names(node_names=list(data.columns))
+    cit = CIT(data=data.values, method="fisherz")
+    graph, sepsets, _ = fas(
+        data=data.values,
+        nodes=nodes,
+        independence_test_method=cit,
+        alpha=0.05,
+        depth=-1,
+        knowledge=None,
+        show_progress=False,
+    )
+    fci_kwargs = dict(
+        alpha=0.05,
+        background_knowledge=None,
+        max_path_length=-1,
+        independence_test_method="fisherz",
+        verbose=False,
+    )
     probs, best_graph = bootstrap_fci_edge_stability(
-        data, resamples=2, random_state=1
+        data,
+        resamples=2,
+        graph=graph,
+        nodes=graph.nodes,
+        sepsets=sepsets,
+        random_state=1,
+        fci_kwargs=fci_kwargs,
     )
     assert isinstance(probs, dict)
     assert all(isinstance(v, dict) for v in probs.values())
@@ -111,16 +138,21 @@ def test_fci_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
             return self._n2
 
     class MockGraph:
-        def __init__(self, edges):
+        def __init__(self, edges, nodes=None):
             self._edges = edges
+            self._nodes = nodes or []
 
         def get_graph_edges(self):
             return self._edges
 
+        def get_nodes(self):
+            return self._nodes
+
     A, B, C = MockNode("A"), MockNode("B"), MockNode("C")
-    g1 = MockGraph([MockEdge(A, B, "TAIL", "ARROW")])
+    g1 = MockGraph([MockEdge(A, B, "TAIL", "ARROW")], [A, B, C])
     g2 = MockGraph(
-        [MockEdge(A, B, "TAIL", "ARROW"), MockEdge(B, C, "TAIL", "ARROW")]
+        [MockEdge(A, B, "TAIL", "ARROW"), MockEdge(B, C, "TAIL", "ARROW")],
+        [A, B, C],
     )
 
     graphs = iter([g2, g2, g1])
@@ -128,7 +160,10 @@ def test_fci_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
     def fci_mock(*args, **kwargs):
         return next(graphs), None
 
-    monkeypatch.setattr("causal_pipe.sem.sem.fci", fci_mock)
+    monkeypatch.setattr(
+        "causal_pipe.sem.sem.fci_orient_edges_from_graph_node_sepsets",
+        fci_mock,
+    )
 
     captured = []
 
@@ -137,8 +172,16 @@ def test_fci_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
 
     monkeypatch.setattr("causal_pipe.sem.sem.visualize_graph", viz_mock)
 
+    initial_graph = MockGraph([], [A, B, C])
     bootstrap_fci_edge_stability(
-        data, resamples=3, random_state=0, output_dir=str(tmp_path)
+        data,
+        resamples=3,
+        graph=initial_graph,
+        nodes=[A, B, C],
+        sepsets={},
+        random_state=0,
+        fci_kwargs={},
+        output_dir=str(tmp_path),
     )
 
     assert len(captured) == 2
@@ -186,7 +229,7 @@ def test_fas_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
     graphs = iter([g2, g2, g1])
 
     def fas_mock(*args, **kwargs):
-        return next(graphs), None, None
+        return next(graphs), {}, None
 
     monkeypatch.setattr("causal_pipe.sem.sem.fas", fas_mock)
 
