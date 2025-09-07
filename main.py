@@ -33,7 +33,7 @@ if __name__ == "__main__":
         variable_types=VariableTypes(continuous=[], ordinal=[], nominal=[]),
         preprocessing_params=preprocessor_params,
         skeleton_method=FASSkeletonMethod(bootstrap_resamples=50),
-        orientation_method=FCIOrientationMethod(bootstrap_resamples=20),
+        orientation_method=FCIOrientationMethod(),
         causal_effect_methods=[
             # Best method - Respect FCI Edge Directions - No Climbing
             CausalEffectMethod(name="sem", directed=True, params={"estimator": "MLR"}),
@@ -46,11 +46,7 @@ if __name__ == "__main__":
             # CausalEffectMethod(name="spearman", directed=True),
             # SEM Climbing, only ML based estimators are supported
             CausalEffectMethod(
-                name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True,
-                                                            "bootstrap_resamples": 0,
-                                                            "bootstrap_random_state": 42
-                                                            }
-
+                name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True}
             ),
             # CausalEffectMethod(
             #     name="sem-climbing", directed=True, params={"estimator": "MLR"}

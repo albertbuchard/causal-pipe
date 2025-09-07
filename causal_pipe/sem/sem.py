@@ -2,21 +2,15 @@ import warnings
 from typing import List, Optional, Tuple, Dict, Any
 
 import copy
-import multiprocessing as mp
 import numpy as np
 import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
 
-from causal_pipe.causal_discovery.bootstrap_utils import (
-    format_oriented_edge,
-    make_graph,
-)
 from causal_pipe.sem.hill_climber import GraphHillClimber
 from causal_pipe.utilities.graph_utilities import (
     dataframe_to_json_compatible_list,
     general_graph_to_sem_model,
     get_neighbors_general_graph,
-    duplicate_circle_endpoints_probabilities,
 )
 from causal_pipe.utilities.model_comparison_utilities import (
     BETTER_MODEL_1,
@@ -872,61 +866,6 @@ def nodes_names_from_data(data: pd.DataFrame) -> List[str]:
 
 
 
-_hc_data = None
-_hc_node_names = None
-_hc_estimator = None
-_hc_respect_pag = None
-_hc_initial_graph = None
-_hc_max_iter = None
-_hc_n = None
-
-
-def _init_hc_bootstrap(data, node_names, estimator, respect_pag, initial_graph, max_iter):
-    """Initializer to share data across hill-climb bootstrap worker processes."""
-    global _hc_data, _hc_node_names, _hc_estimator
-    global _hc_respect_pag, _hc_initial_graph, _hc_max_iter, _hc_n
-    _hc_data = data
-    _hc_node_names = node_names
-    _hc_estimator = estimator
-    _hc_respect_pag = respect_pag
-    _hc_initial_graph = initial_graph
-    _hc_max_iter = max_iter
-    _hc_n = data.shape[0]
-
-
-def _hc_bootstrap_worker(seed: int):
-    """Run a single hill-climb bootstrap iteration."""
-    sample = _hc_data.sample(n=_hc_n, replace=True, random_state=seed)
-    sem_score_i = SEMScore(
-        data=sample,
-        estimator=_hc_estimator,
-        return_metrics=False,
-        ordered=None,
-    )
-    hill_climber_i = GraphHillClimber(
-        score_function=sem_score_i,
-        get_neighbors_func=get_neighbors_general_graph,
-        node_names=_hc_node_names,
-        keep_initially_oriented_edges=True,
-        respect_pag=_hc_respect_pag,
-    )
-    graph_copy = copy.deepcopy(_hc_initial_graph)
-    result_graph = hill_climber_i.run(initial_graph=graph_copy, max_iter=_hc_max_iter)
-
-    edges_repr = []
-    for edge in result_graph.get_graph_edges():
-        n1 = edge.get_node1().get_name()
-        n2 = edge.get_node2().get_name()
-        e1 = edge.endpoint1
-        e2 = edge.endpoint2
-        if n1 <= n2:
-            edges_repr.append((n1, n2, e1.name, e2.name))
-        else:
-            edges_repr.append((n2, n1, e2.name, e1.name))
-    return edges_repr
-
-
-
 def search_best_graph_climber(
     data: pd.DataFrame,
     *,
@@ -944,9 +883,6 @@ def search_best_graph_climber(
     same_occasion_regex: Optional[str] = None,
     ordered: Optional[List[str]] = None,
     respect_pag: bool = True,
-    bootstrap_resamples: int = 0,
-    bootstrap_random_state: Optional[int] = None,
-    n_jobs: Optional[int] = 1,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
     """
     Searches for the best graph structure using hill-climbing based on SEM fit.
@@ -966,16 +902,6 @@ def search_best_graph_climber(
     respect_pag : bool, optional
         When True, the search preserves PAG marks (no change to ↔, →, —; only
         resolves circle endpoints consistent with PAG semantics).
-    bootstrap_resamples : int, optional
-        If greater than ``0``, run the SEM hill climber on
-        ``bootstrap_resamples`` bootstrap samples of ``data`` to estimate
-        edge orientation probabilities after hill climbing.
-    bootstrap_random_state : Optional[int], optional
-        Seed for the hill-climb bootstrap resampling procedure.
-    n_jobs : Optional[int], optional
-        Number of worker processes to use for bootstrapped hill climbing. When
-        ``1`` the computation is run sequentially; larger values enable
-        multiprocessing.
 
 
     Returns
@@ -990,9 +916,6 @@ def search_best_graph_climber(
               any residual covariance augmentation.
             - ``resid_cov_aug``: details about the augmentation step, or ``None``
               if no covariances were added.
-            - ``hc_edge_orientation_probabilities``: when hill-climb
-              bootstrapping is requested, orientation probabilities for edges
-              after hill climbing.
     """
     if node_names is None:
         node_names = nodes_names_from_data(data)
@@ -1013,101 +936,9 @@ def search_best_graph_climber(
     # Run hill-climbing starting from the initial graph
     initial_graph_copy = copy.deepcopy(initial_graph)
     best_score = {}
-    best_graph = None
-    baseline_score = None
-
-    if not bootstrap_resamples:
-        best_graph = hill_climber.run(initial_graph=initial_graph_copy, max_iter=max_iter)
-        best_score = sem_score.exhaustive_results(best_graph)
-        baseline_score = best_score.copy()
-    elif not isinstance(bootstrap_resamples, int) or bootstrap_resamples < 0:
-        raise ValueError("bootstrap_resamples must be a non-negative integer.")
-    else:
-        rng = np.random.RandomState(bootstrap_random_state)
-        counts: Dict[Tuple[str, str], Dict[str, int]] = {}
-        graph_counts: Dict[
-            Tuple[Tuple[str, str, str, str], ...], Tuple[int, List[Tuple[str, str, str, str]]]
-        ] = {}
-
-        if n_jobs is None or n_jobs <= 0:
-            n_jobs = 1
-        n_jobs = min(n_jobs, bootstrap_resamples)
-
-        seeds = rng.randint(0, 2**32, size=bootstrap_resamples)
-        _init_hc_bootstrap(data, node_names, estimator, respect_pag, initial_graph, max_iter)
-        if n_jobs == 1:
-            results = [_hc_bootstrap_worker(s) for s in seeds]
-        else:
-            with mp.Pool(
-                processes=n_jobs,
-                initializer=_init_hc_bootstrap,
-                initargs=(data, node_names, estimator, respect_pag, initial_graph, max_iter),
-            ) as pool:
-                results = pool.map(_hc_bootstrap_worker, seeds)
-
-        for edges_repr in results:
-            edges_repr_list = []
-            for n1, n2, e1, e2 in edges_repr:
-                pair = (n1, n2)
-                orient = f"{e1}-{e2}"
-                orient_counts = counts.setdefault(pair, {})
-                orient_counts[orient] = orient_counts.get(orient, 0) + 1
-                edges_repr_list.append((n1, n2, e1, e2))
-            key = tuple(sorted(edges_repr_list))
-            if key in graph_counts:
-                graph_counts[key] = (graph_counts[key][0] + 1, graph_counts[key][1])
-            else:
-                graph_counts[key] = (1, list(edges_repr_list))
-
-        hc_edge_orientation_probabilities = {
-            edge: {o: c / bootstrap_resamples for o, c in orient_counts.items()}
-            for edge, orient_counts in counts.items()
-        }
-
-        hc_edge_orientation_probabilities = duplicate_circle_endpoints_probabilities(
-            hc_edge_orientation_probabilities
-        )
-
-        if hc_edge_orientation_probabilities:
-            print("Hill-climb bootstrap edge orientation probabilities:")
-            for (a, b), orient_probs in hc_edge_orientation_probabilities.items():
-                for orient, p in orient_probs.items():
-                    edge_str = format_oriented_edge(a, b, orient)
-                    print(f"  {edge_str}: {p:.2f}")
-
-        graph_probs: List[Tuple[float, GeneralGraph]] = []
-        if graph_counts:
-            for edges_repr, (count, edges_list) in graph_counts.items():
-                prob = count / bootstrap_resamples
-                graph_obj = make_graph(node_names, edges_list)
-                graph_probs.append((prob, graph_obj))
-
-            if graph_probs:
-                best_prob, best_graph_bootstrap = max(
-                    graph_probs, key=lambda x: x[0]
-                )
-                best_graph = copy.deepcopy(best_graph_bootstrap)
-                best_score = sem_score.exhaustive_results(best_graph)
-                baseline_score = best_score.copy()
-                best_score["best_graph_with_hc_bootstrap"] = (
-                    best_prob,
-                    copy.deepcopy(best_graph_bootstrap),
-                    hc_edge_orientation_probabilities,
-                )
-                sorted_graphs = sorted(
-                    graph_probs, key=lambda x: x[0], reverse=True
-                )
-                best_score["top_graphs_with_hc_bootstrap"] = [
-                    (score, copy.deepcopy(g)) for score, g in sorted_graphs[:3]
-                ]
-                best_score["hc_bootstrap_edge_probabilities"] = hc_edge_orientation_probabilities
-            else:
-                raise RuntimeError("No graphs were generated during hill-climb bootstrapping.")
-
-            if hc_edge_orientation_probabilities:
-                best_score["hc_edge_orientation_probabilities"] = (
-                    hc_edge_orientation_probabilities
-                )
+    best_graph = hill_climber.run(initial_graph=initial_graph_copy, max_iter=max_iter)
+    best_score = sem_score.exhaustive_results(best_graph)
+    baseline_score = best_score.copy()
 
     if best_graph is None:
         raise RuntimeError("Hill climbing did not produce a best graph.")

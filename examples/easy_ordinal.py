@@ -103,7 +103,7 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     config.causal_effect_methods = [
         # For ordinal data
         CausalEffectMethod(name="sem", directed=True),
-        CausalEffectMethod(name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True, "bootstrap_resamples": 2, "bootstrap_random_state": 42}),
+        CausalEffectMethod(name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True}),
     ]
     config.preprocessing_params.keep_only_correlated_with = ["Var0", "Var5"]
     config.preprocessing_params.filter_method = "spearman"
