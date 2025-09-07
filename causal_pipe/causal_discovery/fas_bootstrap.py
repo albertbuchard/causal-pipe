@@ -203,12 +203,12 @@ def bootstrap_fas_edge_stability(
         graph_obj = make_graph(
             node_names,
             [(a, b, "TAIL", "TAIL") for (a, b) in filtered_edges_display],
-        )
+        ) 
         best_sepsets: Dict[Tuple[int, int], Set[int]] = {}
         for (i, j), cnt in sepset_counts.items():
             S_best = set(max(cnt.items(), key=lambda x: x[1])[0])
             best_sepsets[(i, j)] = S_best
-            best_sepsets[(j, i)] = S_best
+            best_sepsets[(j, i)] = S_best 
         best_graph_with_bootstrap = (
             best_prob,
             graph_obj,
