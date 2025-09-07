@@ -321,7 +321,7 @@ class CausalPipe:
             if isinstance(self.skeleton_method, BCSLSkeletonMethod):
                 bcsl = BCSL(
                     data=df,
-                    num_bootstrap_samples=self.skeleton_method.num_bootstrap_samples,
+                    num_bootstrap_samples=self.skeleton_method.bootstrap_resamples,
                     conditional_independence_method=self.skeleton_method.conditional_independence_method,
                     multiple_comparison_correction=self.skeleton_method.multiple_comparison_correction,
                     bootstrap_all_edges=self.skeleton_method.bootstrap_all_edges,

@@ -169,18 +169,10 @@ class BCSLSkeletonMethod(SkeletonMethod):
     """
 
     name: SkeletonMethodNameEnum = SkeletonMethodNameEnum.BCSL
-    num_bootstrap_samples: int = 100
     multiple_comparison_correction: Optional[MultipleComparisonCorrectionEnum] = None
     bootstrap_all_edges: bool = True
     use_aee_alpha: float = 0.05
     max_k: int = 3
-
-    @field_validator("num_bootstrap_samples")
-    @classmethod
-    def check_num_bootstrap_samples(cls, v):
-        if v <= 0:
-            raise ValueError("num_bootstrap_samples must be positive")
-        return v
 
     @field_validator("use_aee_alpha", "alpha", mode="before")
     @classmethod
@@ -286,6 +278,14 @@ class HillClimbingOrientationMethod(OrientationMethod):
     def check_max_k(cls, v):
         if v < 0:
             raise ValueError("max_k must be non-negative")
+        return v
+
+    # If bootstrap is set raise a warning
+    @field_validator("bootstrap_resamples")
+    @classmethod
+    def warn_bootstrap_not_supported(cls, v):
+        if v > 0:
+            print("Warning: bootstrap_resamples is not supported for Hill Climbing and will be ignored.")
         return v
 
 
