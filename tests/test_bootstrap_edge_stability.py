@@ -101,8 +101,8 @@ def test_hill_climb_bootstrap_returns_probabilities(monkeypatch):
         data,
         g,
         max_iter=0,
-        hc_bootstrap_resamples=2,
-        hc_bootstrap_random_state=1,
+        bootstrap_resamples=2,
+        bootstrap_random_state=1,
     )
 
     assert "hc_edge_orientation_probabilities" in best_score
@@ -325,8 +325,8 @@ def test_hc_bootstrap_saves_graph_with_highest_edge_probability_product(monkeypa
         data,
         g1,
         max_iter=0,
-        hc_bootstrap_resamples=3,
-        hc_bootstrap_random_state=0,
+        bootstrap_resamples=3,
+        bootstrap_random_state=0,
         hc_bootstrap_output_dir=str(tmp_path),
     )
 

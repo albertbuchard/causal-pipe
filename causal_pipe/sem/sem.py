@@ -1154,8 +1154,8 @@ def search_best_graph_climber(
     same_occasion_regex: Optional[str] = None,
     *,
     respect_pag: bool = False,
-    hc_bootstrap_resamples: int = 0,
-    hc_bootstrap_random_state: Optional[int] = None,
+    bootstrap_resamples: int = 0,
+    bootstrap_random_state: Optional[int] = None,
     **kwargs,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
     """
@@ -1176,11 +1176,11 @@ def search_best_graph_climber(
     respect_pag : bool, optional
         When True, the search preserves PAG marks (no change to ↔, →, —; only
         resolves circle endpoints consistent with PAG semantics).
-    hc_bootstrap_resamples : int, optional
+    bootstrap_resamples : int, optional
         If greater than ``0``, run the SEM hill climber on
-        ``hc_bootstrap_resamples`` bootstrap samples of ``data`` to estimate
+        ``bootstrap_resamples`` bootstrap samples of ``data`` to estimate
         edge orientation probabilities after hill climbing.
-    hc_bootstrap_random_state : Optional[int], optional
+    bootstrap_random_state : Optional[int], optional
         Seed for the hill-climb bootstrap resampling procedure.
     hc_bootstrap_output_dir : Optional[str], optional
         Directory to save the three bootstrapped graphs with the highest
@@ -1227,18 +1227,18 @@ def search_best_graph_climber(
     best_score = {}
     best_graph = None
     baseline_score = None
-    if not hc_bootstrap_resamples:
+    if not bootstrap_resamples:
         best_graph = hill_climber.run(initial_graph=initial_graph_copy, max_iter=max_iter)
         best_score = sem_score.exhaustive_results(best_graph)
         baseline_score = best_score.copy()
-    elif not isinstance(hc_bootstrap_resamples, int) or hc_bootstrap_resamples < 0:
-        raise ValueError("hc_bootstrap_resamples must be a non-negative integer.")
+    elif not isinstance(bootstrap_resamples, int) or bootstrap_resamples < 0:
+        raise ValueError("bootstrap_resamples must be a non-negative integer.")
     else:
         n = data.shape[0]
-        rng = np.random.RandomState(hc_bootstrap_random_state)
+        rng = np.random.RandomState(bootstrap_random_state)
         counts: Dict[Tuple[str, str], Dict[str, int]] = {}
         graph_counts: Dict[Tuple[Tuple[str, str, str, str], ...], Tuple[int, GeneralGraph]] = {}
-        for i in range(hc_bootstrap_resamples):
+        for i in range(bootstrap_resamples):
             sample = data.sample(n=n, replace=True, random_state=rng.randint(0, 2**32))
             sem_score_i = SEMScore(
                 data=sample,
@@ -1281,7 +1281,7 @@ def search_best_graph_climber(
                 graph_counts[key] = (1, copy.deepcopy(result_graph))
 
         hc_edge_orientation_probabilities = {
-            edge: {o: c / hc_bootstrap_resamples for o, c in orient_counts.items()}
+            edge: {o: c / bootstrap_resamples for o, c in orient_counts.items()}
             for edge, orient_counts in counts.items()
         }
 
@@ -1299,7 +1299,7 @@ def search_best_graph_climber(
         graph_probs: List[Tuple[float, GeneralGraph]] = []
         if graph_counts:
             for edges_repr, (count, graph_obj) in graph_counts.items():
-                prob = count / hc_bootstrap_resamples
+                prob = count / bootstrap_resamples
                 graph_probs.append((prob, graph_obj))
 
             if graph_probs:
