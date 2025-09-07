@@ -211,6 +211,17 @@ def bootstrap_fas_edge_stability(
             k: set(max(cnt.items(), key=lambda x: x[1])[0])
             for k, cnt in sepset_counts.items()
         }
+        def convert_sepsets_to_idx(sepsets: Dict[FrozenSet[str], Set[str]]) -> Dict[Tuple[int], Set[int]]:
+            name_to_idx = {name: idx for idx, name in enumerate(node_names)}
+            sepsets_idx = {}
+            for key, S in sepsets.items():
+                idx_key = tuple(name_to_idx[name] for name in key)
+                idx_key_sym = (idx_key[1], idx_key[0])
+                idx_S = set(name_to_idx[name] for name in S)
+                sepsets_idx[idx_key] = idx_S
+                sepsets_idx[idx_key_sym] = idx_S
+            return sepsets_idx
+        best_sepsets = convert_sepsets_to_idx(best_sepsets)
         best_graph_with_bootstrap = (
             best_prob,
             graph_obj,
