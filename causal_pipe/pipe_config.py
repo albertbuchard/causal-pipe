@@ -143,6 +143,7 @@ class SkeletonMethod(BaseModel):
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
     bootstrap_resamples: int = 0
     bootstrap_random_state: Optional[int] = None
+    bootstrap_edge_threshold: Optional[float] = None
 
     @field_validator("alpha")
     @classmethod
@@ -158,6 +159,12 @@ class SkeletonMethod(BaseModel):
             raise ValueError("bootstrap_resamples must be non-negative")
         return v
 
+    @field_validator("bootstrap_edge_threshold")
+    @classmethod
+    def check_bootstrap_edge_threshold(cls, v):
+        if v is not None and not (0.0 <= v <= 1.0):
+            raise ValueError("bootstrap_edge_threshold must be between 0.0 and 1.0")
+        return v
 
     class Config:
         validate_assignment = True
@@ -270,7 +277,6 @@ class HillClimbingOrientationMethod(OrientationMethod):
         if v < 0:
             raise ValueError("max_k must be non-negative")
         return v
-
 
 class CausalEffectMethod(BaseModel):
     """
