@@ -93,7 +93,7 @@ def bootstrap_fas_edge_stability(
             float,
             GeneralGraph,
             Dict[Tuple[str, str], float],
-            Dict[FrozenSet[str], Set[str]],
+            Dict[Tuple[int, int], Set[int]],
         ]
     ],
 ]:
@@ -124,7 +124,7 @@ def bootstrap_fas_edge_stability(
     rng = np.random.default_rng(random_state)
     counts: Dict[FrozenSet[str], int] = defaultdict(int)
     graph_counts: Dict[FrozenSet[FrozenSet[str]], Tuple[int, List[Tuple[str, str]]]] = {}
-    sepset_counts: Dict[FrozenSet[str], Counter[FrozenSet[str]]] = defaultdict(Counter)
+    sepset_counts: Dict[Tuple[int, int], Counter[FrozenSet[int]]] = defaultdict(Counter)
 
     fas_kwargs = dict(fas_kwargs or {})
     node_names = list(data.columns)
@@ -156,7 +156,6 @@ def bootstrap_fas_edge_stability(
                 ):
                     yield r
 
-    names = node_names
     for edges_repr, sepsets in _iter_results():
         for (a, b) in edges_repr:
             counts[frozenset((a, b))] += 1
@@ -171,10 +170,8 @@ def bootstrap_fas_edge_stability(
             graph_counts[graph_key] = (1, list(edges_repr))
 
         for (i, j), S in sepsets.items():
-            ai, aj = names[i], names[j]
-            key = frozenset((ai, aj))
-            S_names = frozenset(names[k] for k in S)
-            sepset_counts[key][S_names] += 1
+            key = (min(i, j), max(i, j))
+            sepset_counts[key][frozenset(S)] += 1
 
     probs_unordered = {k: c / resamples for k, c in counts.items()}
 
@@ -206,22 +203,12 @@ def bootstrap_fas_edge_stability(
         graph_obj = make_graph(
             node_names,
             [(a, b, "TAIL", "TAIL") for (a, b) in filtered_edges_display],
-        )
-        best_sepsets = {
-            k: set(max(cnt.items(), key=lambda x: x[1])[0])
-            for k, cnt in sepset_counts.items()
-        }
-        def convert_sepsets_to_idx(sepsets: Dict[FrozenSet[str], Set[str]]) -> Dict[Tuple[int], Set[int]]:
-            name_to_idx = {name: idx for idx, name in enumerate(node_names)}
-            sepsets_idx = {}
-            for key, S in sepsets.items():
-                idx_key = tuple(name_to_idx[name] for name in key)
-                idx_key_sym = (idx_key[1], idx_key[0])
-                idx_S = set(name_to_idx[name] for name in S)
-                sepsets_idx[idx_key] = idx_S
-                sepsets_idx[idx_key_sym] = idx_S
-            return sepsets_idx
-        best_sepsets = convert_sepsets_to_idx(best_sepsets)
+        ) 
+        best_sepsets: Dict[Tuple[int, int], Set[int]] = {}
+        for (i, j), cnt in sepset_counts.items():
+            S_best = set(max(cnt.items(), key=lambda x: x[1])[0])
+            best_sepsets[(i, j)] = S_best
+            best_sepsets[(j, i)] = S_best 
         best_graph_with_bootstrap = (
             best_prob,
             graph_obj,
