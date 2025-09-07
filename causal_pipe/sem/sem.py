@@ -527,7 +527,7 @@ def fit_sem_lavaan(
 
     # Model comparison if model_2_string is provided
     comparison_results = None
-    is_better_model = None
+    is_better_model = NO_BETTER_MODEL
     if model_2_string is not None:
         print("\nComparing models...")
         # Fit the second model
@@ -635,6 +635,7 @@ def fit_sem_lavaan(
                 print("Error in performing Vuong test:", file=sys.stderr)
                 print(e, file=sys.stderr)
                 comparison_results = None
+                is_better_model = NO_BETTER_MODEL
         else:
             # Use BIC for model comparison
             try:
@@ -664,6 +665,7 @@ def fit_sem_lavaan(
                 print("Error in comparing models using BIC:", file=sys.stderr)
                 print(e, file=sys.stderr)
                 comparison_results = None
+                is_better_model = NO_BETTER_MODEL
 
     # Compile all outputs into a dictionary
     results = {
@@ -765,18 +767,22 @@ class SEMScore:
             general_graph, compared_to_graph=compared_to_graph
         )
 
-        if results is None:
+        if not results:
             # Assign a very low score if the model fitting failed
             return {
                 "score": -np.inf,
+                "is_better_model": NO_BETTER_MODEL,
             }
 
         fit_measures = results.get("fit_measures")
         if self.estimator == "bayesian":
+            is_better_model = results.get("is_better_model")
+            if is_better_model is None:
+                is_better_model = NO_BETTER_MODEL
             return {
                 "score": fit_measures.loc["waic", "value"],
                 "fit_measures": fit_measures,
-                "is_better_model": results.get("is_better_model"),
+                "is_better_model": is_better_model,
                 "comparison_results": results.get("comparison_results"),
                 "all_results": results,
             }
@@ -787,15 +793,19 @@ class SEMScore:
                 # Here, for simplicity, assign a very low score
                 return {
                     "score": -np.inf,
+                    "is_better_model": NO_BETTER_MODEL,
                 }
 
             bic = fit_measures.get("bic")
+            is_better_model = results.get("is_better_model")
+            if is_better_model is None:
+                is_better_model = NO_BETTER_MODEL
 
             return {
                 # Return negative BIC as the score
                 "score": -bic,
                 "fit_measures": fit_measures,
-                "is_better_model": results.get("is_better_model"),
+                "is_better_model": is_better_model,
                 "comparison_results": results.get("comparison_results"),
                 "all_results": results,
             }
