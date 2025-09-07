@@ -710,9 +710,9 @@ class CausalPipe:
                         forbid_pairs=method.params.get("forbid_pairs"),
                         same_occasion_regex=method.params.get("same_occasion_regex"),
                         respect_pag=respect_pag,
-                        hc_bootstrap_resamples=method.params.get("hc_bootstrap_resamples"),
-                        hc_bootstrap_random_state=method.params.get(
-                            "hc_bootstrap_random_state"
+                        bootstrap_resamples=method.params.get("bootstrap_resamples"),
+                        bootstrap_random_state=method.params.get(
+                            "bootstrap_random_state"
                         ),
                     )
                     self.causal_effects[method.name] = {

@@ -47,7 +47,7 @@ if __name__ == "__main__":
             # SEM Climbing, only ML based estimators are supported
             CausalEffectMethod(
                 name="sem-climbing", directed=True, params={"estimator": "ML", "respect_pag": True,
-                                                            "hc_bootstrap_resamples": 2, "hc_bootstrap_random_state": 42}
+                                                            "bootstrap_resamples": 2, "bootstrap_random_state": 42}
 
             ),
             # CausalEffectMethod(
