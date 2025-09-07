@@ -220,18 +220,9 @@ class OrientationMethod(BaseModel):
     conditional_independence_method: ConditionalIndependenceMethodEnum = (
         ConditionalIndependenceMethodEnum.FISHERZ
     )
-    bootstrap_resamples: int = 0
-    bootstrap_random_state: Optional[int] = None
 
     class Config:
         validate_assignment = True
-
-    @field_validator("bootstrap_resamples")
-    @classmethod
-    def check_bootstrap_resamples(cls, v):
-        if v < 0:
-            raise ValueError("bootstrap_resamples must be non-negative")
-        return v
 
 
 class FCIOrientationMethod(OrientationMethod):
@@ -278,14 +269,6 @@ class HillClimbingOrientationMethod(OrientationMethod):
     def check_max_k(cls, v):
         if v < 0:
             raise ValueError("max_k must be non-negative")
-        return v
-
-    # If bootstrap is set raise a warning
-    @field_validator("bootstrap_resamples")
-    @classmethod
-    def warn_bootstrap_not_supported(cls, v):
-        if v > 0:
-            print("Warning: bootstrap_resamples is not supported for Hill Climbing and will be ignored.")
         return v
 
 
