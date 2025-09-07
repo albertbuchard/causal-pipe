@@ -24,9 +24,9 @@ from causal_pipe.preprocess.utilities import ensure_data_types
 from causal_pipe.sem.sem import (
     fit_sem_lavaan,
     search_best_graph_climber,
-    bootstrap_fci_edge_stability,
-    bootstrap_fas_edge_stability,
 )
+from causal_pipe.causal_discovery.fci_bootstrap import bootstrap_fci_edge_stability
+from causal_pipe.causal_discovery.fas_bootstrap import bootstrap_fas_edge_stability
 from causal_pipe.utilities.graph_utilities import (
     copy_graph,
     unify_edge_types_directed_undirected,

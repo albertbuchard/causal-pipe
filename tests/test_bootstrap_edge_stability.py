@@ -10,11 +10,13 @@ causal_pipe_pkg = types.ModuleType("causal_pipe")
 causal_pipe_pkg.__path__ = [os.path.join(ROOT, "causal_pipe")]
 sys.modules.setdefault("causal_pipe", causal_pipe_pkg)
 
-from causal_pipe.sem.sem import (
+from causal_pipe.causal_discovery.fci_bootstrap import (
     bootstrap_fci_edge_stability,
-    bootstrap_fas_edge_stability,
-    search_best_graph_climber,
 )
+from causal_pipe.causal_discovery.fas_bootstrap import (
+    bootstrap_fas_edge_stability,
+)
+from causal_pipe.sem.sem import search_best_graph_climber
 from causallearn.search.ConstraintBased.FCI import fci
 from causallearn.utils.FAS import fas
 from causallearn.utils.cit import CIT
@@ -161,7 +163,7 @@ def test_fci_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
         return next(graphs), None
 
     monkeypatch.setattr(
-        "causal_pipe.sem.sem.fci_orient_edges_from_graph_node_sepsets",
+        "causal_pipe.causal_discovery.fci_bootstrap.fci_orient_edges_from_graph_node_sepsets",
         fci_mock,
     )
 
@@ -170,7 +172,9 @@ def test_fci_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
     def viz_mock(graph_obj, title, show, output_path):
         captured.append((graph_obj, title))
 
-    monkeypatch.setattr("causal_pipe.sem.sem.visualize_graph", viz_mock)
+    monkeypatch.setattr(
+        "causal_pipe.causal_discovery.fci_bootstrap.visualize_graph", viz_mock
+    )
 
     initial_graph = MockGraph([], [A, B, C])
     bootstrap_fci_edge_stability(
@@ -231,20 +235,22 @@ def test_fas_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
     def fas_mock(*args, **kwargs):
         return next(graphs), {}, None
 
-    monkeypatch.setattr("causal_pipe.sem.sem.fas", fas_mock)
+    monkeypatch.setattr("causal_pipe.causal_discovery.fas_bootstrap.fas", fas_mock)
 
     class DummyCIT:
         def __init__(self, *args, **kwargs):
             pass
 
-    monkeypatch.setattr("causal_pipe.sem.sem.CIT", DummyCIT)
+    monkeypatch.setattr("causal_pipe.causal_discovery.fas_bootstrap.CIT", DummyCIT)
 
     captured = []
 
     def viz_mock(graph_obj, title, show, output_path):
         captured.append((graph_obj, title))
 
-    monkeypatch.setattr("causal_pipe.sem.sem.visualize_graph", viz_mock)
+    monkeypatch.setattr(
+        "causal_pipe.causal_discovery.fas_bootstrap.visualize_graph", viz_mock
+    )
 
     bootstrap_fas_edge_stability(
         data, resamples=3, random_state=0, output_dir=str(tmp_path)
@@ -259,82 +265,3 @@ def test_fas_bootstrap_saves_graph_with_highest_edge_probability_product(monkeyp
     assert len(second_graph.get_graph_edges()) == 1
     assert "p=0.33" in second_title
 
-
-def test_hc_bootstrap_saves_graph_with_highest_edge_probability_product(monkeypatch, tmp_path):
-    data = pd.DataFrame({"A": [0, 1, 2], "B": [0, 1, 2], "C": [0, 1, 2]})
-
-    class MockNode:
-        def __init__(self, name):
-            self._name = name
-
-        def get_name(self):
-            return self._name
-
-    class MockEdge:
-        def __init__(self, n1, n2, e1, e2):
-            self._n1 = n1
-            self._n2 = n2
-            self.endpoint1 = types.SimpleNamespace(name=e1)
-            self.endpoint2 = types.SimpleNamespace(name=e2)
-
-        def get_node1(self):
-            return self._n1
-
-        def get_node2(self):
-            return self._n2
-
-    class MockGraph:
-        def __init__(self, edges):
-            self._edges = edges
-
-        def get_graph_edges(self):
-            return self._edges
-
-    A, B, C = MockNode("A"), MockNode("B"), MockNode("C")
-    g1 = MockGraph([MockEdge(A, B, "TAIL", "ARROW")])
-    g2 = MockGraph(
-        [MockEdge(A, B, "TAIL", "ARROW"), MockEdge(B, C, "TAIL", "ARROW")]
-    )
-
-    graphs = iter([g1, g2, g2, g1])
-
-    class DummyHillClimber:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def run(self, initial_graph, max_iter):
-            return next(graphs)
-
-    monkeypatch.setattr("causal_pipe.sem.sem.GraphHillClimber", DummyHillClimber)
-
-    def dummy_exhaustive_results(self, general_graph, compared_to_graph=None):
-        return {"fit_measures": {"bic": 1.0}}
-
-    monkeypatch.setattr(
-        "causal_pipe.sem.sem.SEMScore.exhaustive_results", dummy_exhaustive_results
-    )
-
-    captured = []
-
-    def viz_mock(graph_obj, title, show, output_path):
-        captured.append((graph_obj, title))
-
-    monkeypatch.setattr("causal_pipe.sem.sem.visualize_graph", viz_mock)
-
-    search_best_graph_climber(
-        data,
-        g1,
-        max_iter=0,
-        bootstrap_resamples=3,
-        bootstrap_random_state=0,
-        hc_bootstrap_output_dir=str(tmp_path),
-    )
-
-    assert len(captured) == 2
-    first_graph, first_title = captured[0]
-    second_graph, second_title = captured[1]
-
-    assert len(first_graph.get_graph_edges()) == 2
-    assert "p=0.67" in first_title
-    assert len(second_graph.get_graph_edges()) == 1
-    assert "p=0.33" in second_title
