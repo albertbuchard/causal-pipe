@@ -1,6 +1,6 @@
 """Bootstrap edge stability for the FAS algorithm."""
 
-from typing import Dict, Tuple, Optional, List, Any, Set
+from typing import Dict, Tuple, Optional, List, Any, Set, FrozenSet
 import os
 import multiprocessing as mp
 from collections import Counter, defaultdict
@@ -70,13 +70,9 @@ def _fas_bootstrap_worker(seed: int):
 
     edges_repr = []
     for edge in g.get_graph_edges():
-        n1 = edge.get_node1().get_name()
-        n2 = edge.get_node2().get_name()
-        if n1 <= n2:
-            pair = (n1, n2)
-        else:
-            pair = (n2, n1)
-        edges_repr.append(pair)
+        a = edge.get_node1().get_name()
+        b = edge.get_node2().get_name()
+        edges_repr.append((a, b))
 
     return edges_repr, sepsets
 
@@ -97,7 +93,7 @@ def bootstrap_fas_edge_stability(
             float,
             GeneralGraph,
             Dict[Tuple[str, str], float],
-            Dict[Tuple[int, int], Set[int]],
+            Dict[FrozenSet[str], Set[str]],
         ]
     ],
 ]:
@@ -126,11 +122,9 @@ def bootstrap_fas_edge_stability(
         return {}, None
 
     rng = np.random.default_rng(random_state)
-    counts = defaultdict(int)
-    graph_counts: Dict[
-        Tuple[Tuple[str, str], ...], Tuple[int, List[Tuple[str, str]]]
-    ] = {}
-    sepset_counts = defaultdict(Counter)
+    counts: Dict[FrozenSet[str], int] = defaultdict(int)
+    graph_counts: Dict[FrozenSet[FrozenSet[str]], Tuple[int, List[Tuple[str, str]]]] = {}
+    sepset_counts: Dict[FrozenSet[str], Counter[FrozenSet[str]]] = defaultdict(Counter)
 
     fas_kwargs = dict(fas_kwargs or {})
     node_names = list(data.columns)
@@ -162,52 +156,75 @@ def bootstrap_fas_edge_stability(
                 ):
                     yield r
 
+    names = node_names
     for edges_repr, sepsets in _iter_results():
-        for pair in edges_repr:
-            counts[pair] += 1
-        key = tuple(sorted(edges_repr))
-        if key in graph_counts:
-            graph_counts[key] = (graph_counts[key][0] + 1, graph_counts[key][1])
-        else:
-            graph_counts[key] = (1, list(edges_repr))
-        for (i, j), S in sepsets.items():
-            if i > j:
-                i, j = j, i
-            sepset_counts[(i, j)][frozenset(S)] += 1
+        for (a, b) in edges_repr:
+            counts[frozenset((a, b))] += 1
 
-    probs = {edge: c / resamples for edge, c in counts.items()}
+        graph_key = frozenset(frozenset((a, b)) for (a, b) in edges_repr)
+        if graph_key in graph_counts:
+            graph_counts[graph_key] = (
+                graph_counts[graph_key][0] + 1,
+                graph_counts[graph_key][1],
+            )
+        else:
+            graph_counts[graph_key] = (1, list(edges_repr))
+
+        for (i, j), S in sepsets.items():
+            ai, aj = names[i], names[j]
+            key = frozenset((ai, aj))
+            S_names = frozenset(names[k] for k in S)
+            sepset_counts[key][S_names] += 1
+
+    probs_unordered = {k: c / resamples for k, c in counts.items()}
+
+    probs: Dict[Tuple[str, str], float] = {}
+    for key_set, p in probs_unordered.items():
+        a, b = tuple(key_set)
+        probs[(a, b)] = p
+        probs[(b, a)] = p
 
     best_graph_with_bootstrap = None
     if graph_counts:
         prob_graphs = sorted(
             (
                 (cnt / resamples, edges_list)
-                for _edges_key, (cnt, edges_list) in graph_counts.items()
+                for _k, (cnt, edges_list) in graph_counts.items()
             ),
+            key=lambda x: x[0],
             reverse=True,
         )
-        best_prob, best_edges = prob_graphs[0]
+        best_prob, best_edges_display = prob_graphs[0]
         if edge_threshold is None:
-            filtered_edges = best_edges
+            filtered_edges_display = best_edges_display
         else:
-            filtered_edges = [
+            filtered_edges_display = [
                 (a, b)
-                for a, b in best_edges
-                if probs.get((a, b), 0.0) >= edge_threshold
+                for (a, b) in best_edges_display
+                if probs_unordered.get(frozenset((a, b)), 0.0) >= edge_threshold
             ]
         graph_obj = make_graph(
-            node_names, [(a, b, "TAIL", "TAIL") for a, b in filtered_edges]
+            node_names,
+            [(a, b, "TAIL", "TAIL") for (a, b) in filtered_edges_display],
         )
         best_sepsets = {
             k: set(max(cnt.items(), key=lambda x: x[1])[0])
             for k, cnt in sepset_counts.items()
         }
-        best_graph_with_bootstrap = (best_prob, graph_obj, probs, best_sepsets)
+        best_graph_with_bootstrap = (
+            best_prob,
+            graph_obj,
+            probs,
+            best_sepsets,
+        )
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
             for idx, (p, edges) in enumerate(prob_graphs[:3], start=1):
-                g = make_graph(node_names, [(a, b, "TAIL", "TAIL") for a, b in edges])
+                g = make_graph(
+                    node_names,
+                    [(a, b, "TAIL", "TAIL") for (a, b) in edges],
+                )
                 visualize_graph(
                     g,
                     title=f"Bootstrap Graph {idx} (p={p:.2f})",
