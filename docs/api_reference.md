@@ -467,11 +467,12 @@ search_best_graph_climber(
     whitelist_pairs: Optional[pd.DataFrame] = None,
     forbid_pairs: Optional[pd.DataFrame] = None,
     same_occasion_regex: Optional[str] = None,
+    ordered: Optional[List[str]] = None,
     *,
     respect_pag: bool = False,
     bootstrap_resamples: int = 0,
     bootstrap_random_state: Optional[int] = None,
-    **kwargs,
+    n_jobs: Optional[int] = 1,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]
 ```
 
@@ -489,10 +490,11 @@ search_best_graph_climber(
     - `whitelist_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional whitelist of pairs (`lhs`, `rhs`).
     - `forbid_pairs` (`Optional[pd.DataFrame]`, default `None`): Optional blocklist of pairs.
     - `same_occasion_regex` (`Optional[str]`, default `None`): Regex enforcing same-occasion pairs unless whitelisted.
+    - `ordered` (`Optional[List[str]]`, default `None`): Ordered categorical variables in the data.
     - `respect_pag` (`bool`, default `False`): When `True`, the search preserves PAG marks (no change to ↔, →, —; only resolves circle endpoints consistent with PAG semantics).
-    - `bootstrap_resamples` (`int`, default `0`): If greater than `0`, run the SEM hill climber on bootstrap resamples to estimate orientation probabilities after hill climbing. The three bootstrapped graphs with the highest product of edge orientation probabilities are stored in `sem_hc_bootstrap/`.
+    - `bootstrap_resamples` (`int`, default `0`): If greater than `0`, run the SEM hill climber on bootstrap resamples to estimate orientation probabilities after hill climbing.
     - `bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the hill-climb bootstrap resampling procedure.
-    - `**kwargs`: Additional keyword arguments.
+    - `n_jobs` (`Optional[int]`, default `1`): Number of worker processes to use for bootstrapped hill climbing.
 
 - **Returns:**
     - `Tuple[GeneralGraph, Dict[str, Any]]`: A tuple containing:
