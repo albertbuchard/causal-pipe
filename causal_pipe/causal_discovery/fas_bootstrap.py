@@ -15,11 +15,6 @@ from causal_pipe.utilities.graph_utilities import get_nodes_from_node_names
 from .bootstrap_utils import make_graph
 from .static_causal_discovery import visualize_graph
 
-# Limit BLAS thread usage in child processes to avoid oversubscription
-os.environ.setdefault("OMP_NUM_THREADS", "1")
-os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
-os.environ.setdefault("MKL_NUM_THREADS", "1")
-
 _fas_bootstrap_data = None
 _fas_bootstrap_nodes = None
 _fas_bootstrap_ci_method = None
@@ -130,9 +125,21 @@ def bootstrap_fas_edge_stability(
     node_names = list(data.columns)
     ci_method = fas_kwargs.pop("conditional_independence_method", "fisherz")
 
+    max_procs = max(1, (os.cpu_count() or 1) - 1)
     if n_jobs in (None, 0, -1):
-        n_jobs = os.cpu_count() or 1
-    n_jobs = min(n_jobs, resamples)
+        n_jobs = max_procs
+    n_jobs = max(1, min(n_jobs, resamples, max_procs))
+
+    if n_jobs > 1:
+        # Limit BLAS thread usage in child processes to avoid oversubscription.
+        for var in (
+            "OMP_NUM_THREADS",
+            "OPENBLAS_NUM_THREADS",
+            "MKL_NUM_THREADS",
+            "VECLIB_MAXIMUM_THREADS",
+            "NUMEXPR_NUM_THREADS",
+        ):
+            os.environ.setdefault(var, "1")
 
     seeds = rng.integers(0, 2**32, size=resamples, dtype=np.uint32).tolist()
 
@@ -145,7 +152,8 @@ def bootstrap_fas_edge_stability(
                 yield _fas_bootstrap_worker(int(s))
         else:
             chunksize = max(1, len(seeds) // (n_jobs * 4))
-            with mp.Pool(
+            ctx = mp.get_context("spawn")
+            with ctx.Pool(
                 processes=n_jobs,
                 initializer=_init_fas_bootstrap,
                 initargs=(data, node_names, ci_method, fas_kwargs),
