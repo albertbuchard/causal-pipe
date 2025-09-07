@@ -144,6 +144,7 @@ class SkeletonMethod(BaseModel):
     bootstrap_resamples: int = 0
     bootstrap_random_state: Optional[int] = None
     bootstrap_edge_threshold: Optional[float] = None
+    n_jobs: Optional[int] = None
 
     @field_validator("alpha")
     @classmethod

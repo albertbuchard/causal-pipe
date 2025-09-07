@@ -391,6 +391,7 @@ class CausalPipe:
                         fas_kwargs=fas_kwargs,
                         output_dir=os.path.join(self.output_path, "fas_bootstrap"),
                         edge_threshold=self.skeleton_method.bootstrap_edge_threshold,
+                        n_jobs=self.skeleton_method.n_jobs,
                     )
                     if self.best_graph_with_fas_bootstrap:
                         prob, best_graph_bootstrap, edge_probs, sepsets_bootstrap = (

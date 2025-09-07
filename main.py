@@ -32,7 +32,10 @@ if __name__ == "__main__":
     config = CausalPipeConfig(
         variable_types=VariableTypes(continuous=[], ordinal=[], nominal=[]),
         preprocessing_params=preprocessor_params,
-        skeleton_method=FASSkeletonMethod(bootstrap_resamples=50),
+        skeleton_method=FASSkeletonMethod(
+            bootstrap_resamples=500,
+            # n_jobs=4 or None if you want to use (all available cores - 1)
+        ),
         orientation_method=FCIOrientationMethod(),
         causal_effect_methods=[
             # Best method - Respect FCI Edge Directions - No Climbing
