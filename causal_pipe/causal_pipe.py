@@ -392,9 +392,8 @@ class CausalPipe:
                         resamples=self.skeleton_method.bootstrap_resamples,
                         random_state=self.skeleton_method.bootstrap_random_state,
                         fas_kwargs=fas_kwargs,
-                        output_dir=os.path.join(
-                            self.output_path, "fas_bootstrap"
-                        ),
+                        output_dir=os.path.join(self.output_path, "fas_bootstrap"),
+                        edge_threshold=self.skeleton_method.bootstrap_edge_threshold,
                     )
                     if self.best_graph_with_fas_bootstrap:
                         prob, best_graph_bootstrap, edge_probs, sepsets_bootstrap = (
@@ -405,8 +404,10 @@ class CausalPipe:
                         oriented_probs = {
                             k: {"TAIL-TAIL": v} for k, v in edge_probs.items()
                         }
-                        prob_graph, edges_with_probabilities = add_edge_probabilities_to_graph(
-                            best_graph_bootstrap, oriented_probs
+                        prob_graph, edges_with_probabilities = (
+                            add_edge_probabilities_to_graph(
+                                best_graph_bootstrap, oriented_probs
+                            )
                         )
                         visualize_graph(
                             prob_graph,
@@ -501,17 +502,17 @@ class CausalPipe:
                         sepsets=self.sepsets,
                         random_state=self.orientation_method.bootstrap_random_state,
                         fci_kwargs=fci_kwargs,
-                        output_dir=os.path.join(
-                            self.output_path, "fci_bootstrap"
-                        ),
+                        output_dir=os.path.join(self.output_path, "fci_bootstrap"),
                     )
                     if self.best_graph_with_fci_bootstrap:
                         prob, best_graph_bootstrap, edge_probs = (
                             self.best_graph_with_fci_bootstrap
                         )
                         self.directed_graph = best_graph_bootstrap
-                        prob_graph, edges_with_probabilities = add_edge_probabilities_to_graph(
-                            best_graph_bootstrap, edge_probs
+                        prob_graph, edges_with_probabilities = (
+                            add_edge_probabilities_to_graph(
+                                best_graph_bootstrap, edge_probs
+                            )
                         )
                         visualize_graph(
                             prob_graph,
@@ -651,9 +652,11 @@ class CausalPipe:
                         ordered=ordered,
                         exogenous_vars_model_1=exogenous_vars,
                     )
-                    coef_graph, edges_with_coefficients = add_edge_coefficients_from_sem_fit(
-                        directed_graph,
-                        model_output=self.causal_effects[method.name],
+                    coef_graph, edges_with_coefficients = (
+                        add_edge_coefficients_from_sem_fit(
+                            directed_graph,
+                            model_output=self.causal_effects[method.name],
+                        )
                     )
                     out_sem_dir = os.path.join(self.output_path, "causal_effect", "sem")
                     os.makedirs(out_sem_dir, exist_ok=True)
@@ -734,9 +737,11 @@ class CausalPipe:
                         show=show_plot,
                         output_path=os.path.join(out_sem_dir, "best_graph.png"),
                     )
-                    coef_graph, edges_with_coefficients = add_edge_coefficients_from_sem_fit(
-                        best_graph,
-                        model_output=self.causal_effects[method.name]["summary"],
+                    coef_graph, edges_with_coefficients = (
+                        add_edge_coefficients_from_sem_fit(
+                            best_graph,
+                            model_output=self.causal_effects[method.name]["summary"],
+                        )
                     )
                     visualize_graph(
                         coef_graph,
@@ -757,9 +762,7 @@ class CausalPipe:
                             edges_with_coef_prob,
                         ) = add_edge_coefficients_and_probabilities_from_sem_fit(
                             best_graph_hc,
-                            model_output=self.causal_effects[method.name][
-                                "summary"
-                            ],
+                            model_output=self.causal_effects[method.name]["summary"],
                             edge_probabilities=edge_probs_hc,
                         )
                         visualize_graph(
@@ -774,21 +777,19 @@ class CausalPipe:
                         )
                     if sem_results.get("top_graphs_with_hc_bootstrap"):
                         top_graphs = sem_results["top_graphs_with_hc_bootstrap"]
-                        edge_probs = sem_results.get("hc_bootstrap_edge_probabilities", {})
+                        edge_probs = sem_results.get(
+                            "hc_bootstrap_edge_probabilities", {}
+                        )
                         for i, (prob, top_graph) in enumerate(top_graphs):
                             (
                                 coef_prob_graph,
                                 edges_with_coef_prob,
-                            ) = add_edge_probabilities_to_graph(
-                                top_graph, edge_probs
-                            )
+                            ) = add_edge_probabilities_to_graph(top_graph, edge_probs)
                             visualize_graph(
                                 coef_prob_graph,
                                 edges=edges_with_coef_prob,
                                 title=f"Top {i+1} HC Bootstrap Graph (p={prob:.2f}) With Coefficients and Probabilities",
-                                labels=dict(
-                                    zip(range(len(df.columns)), df.columns)
-                                ),
+                                labels=dict(zip(range(len(df.columns)), df.columns)),
                                 show=show_plot,
                                 output_path=os.path.join(
                                     out_sem_dir,
@@ -816,7 +817,7 @@ class CausalPipe:
                         "n_samples",
                         "comparison_results",
                         "is_better_model",
-                        "model_2_string"
+                        "model_2_string",
                     ]
                     sem_results_to_dump = {
                         k: v for k, v in sem_results.items() if k in keys_to_extract

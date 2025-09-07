@@ -42,12 +42,14 @@ def _to_matrix(df: pd.DataFrame) -> np.ndarray:
     """Convert DataFrame to a numeric matrix based on CI test method."""
     method = (_fas_bootstrap_ci_method or "").lower()
     if method in {"gsq", "chisq", "g2"}:
+
         def _enc(s):
             if pd.api.types.is_categorical_dtype(s):
                 return s.cat.codes
             if pd.api.types.is_object_dtype(s):
                 return s.astype("category").cat.codes
             return s.astype("int64")
+
         return df.apply(_enc).to_numpy(copy=False)
     return df.astype("float64").to_numpy(copy=False)
 
@@ -87,6 +89,7 @@ def bootstrap_fas_edge_stability(
     fas_kwargs: Optional[Dict[str, Any]] = None,
     output_dir: Optional[str] = None,
     n_jobs: Optional[int] = 1,
+    edge_threshold: Optional[float] = None,
 ) -> Tuple[
     Dict[Tuple[str, str], float],
     Optional[
@@ -98,14 +101,35 @@ def bootstrap_fas_edge_stability(
         ]
     ],
 ]:
-    """Estimate edge presence probabilities via bootstrapped FAS runs."""
+    """Estimate edge presence probabilities via bootstrapped FAS runs.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input data with variables as columns.
+    resamples : int
+        Number of bootstrap resamples.
+    random_state : Optional[int], default None
+        Seed for bootstrap sampling.
+    fas_kwargs : Optional[Dict[str, Any]], default None
+        Additional keyword arguments passed to ``fas``.
+    output_dir : Optional[str], default None
+        Directory to save the top bootstrap graphs.
+    n_jobs : Optional[int], default 1
+        Number of worker processes for parallel execution.
+    edge_threshold : Optional[float], default None
+        If provided, edges in the best bootstrap graph with probability below
+        this threshold are removed before returning.
+    """
 
     if resamples <= 0:
         return {}, None
 
     rng = np.random.default_rng(random_state)
     counts = defaultdict(int)
-    graph_counts: Dict[Tuple[Tuple[str, str], ...], Tuple[int, List[Tuple[str, str]]]] = {}
+    graph_counts: Dict[
+        Tuple[Tuple[str, str], ...], Tuple[int, List[Tuple[str, str]]]
+    ] = {}
     sepset_counts = defaultdict(Counter)
 
     fas_kwargs = dict(fas_kwargs or {})
@@ -133,7 +157,9 @@ def bootstrap_fas_edge_stability(
                 initargs=(data, node_names, ci_method, fas_kwargs),
                 maxtasksperchild=250,
             ) as pool:
-                for r in pool.imap_unordered(_fas_bootstrap_worker, seeds, chunksize=chunksize):
+                for r in pool.imap_unordered(
+                    _fas_bootstrap_worker, seeds, chunksize=chunksize
+                ):
                     yield r
 
     for edges_repr, sepsets in _iter_results():
@@ -161,8 +187,16 @@ def bootstrap_fas_edge_stability(
             reverse=True,
         )
         best_prob, best_edges = prob_graphs[0]
+        if edge_threshold is None:
+            filtered_edges = best_edges
+        else:
+            filtered_edges = [
+                (a, b)
+                for a, b in best_edges
+                if probs.get((a, b), 0.0) >= edge_threshold
+            ]
         graph_obj = make_graph(
-            node_names, [(a, b, "TAIL", "TAIL") for a, b in best_edges]
+            node_names, [(a, b, "TAIL", "TAIL") for a, b in filtered_edges]
         )
         best_sepsets = {
             k: set(max(cnt.items(), key=lambda x: x[1])[0])
@@ -173,9 +207,7 @@ def bootstrap_fas_edge_stability(
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
             for idx, (p, edges) in enumerate(prob_graphs[:3], start=1):
-                g = make_graph(
-                    node_names, [(a, b, "TAIL", "TAIL") for a, b in edges]
-                )
+                g = make_graph(node_names, [(a, b, "TAIL", "TAIL") for a, b in edges])
                 visualize_graph(
                     g,
                     title=f"Bootstrap Graph {idx} (p={p:.2f})",
@@ -184,4 +216,3 @@ def bootstrap_fas_edge_stability(
                 )
 
     return probs, best_graph_with_bootstrap
-
