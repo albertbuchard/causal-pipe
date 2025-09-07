@@ -692,6 +692,9 @@ class CausalPipe:
                         )
                     est = method.params.get("estimator", default_estimator)
                     respect_pag = bool(method.params.get("respect_pag", True))
+                    finalize_with_resid_covariances = bool(
+                        method.params.get("finalize_with_resid_covariances", False)
+                    )
                     best_graph, sem_results = search_best_graph_climber(
                         df,
                         initial_graph=self.directed_graph,
@@ -699,9 +702,7 @@ class CausalPipe:
                         max_iter=method.params.get("max_iter", 100),
                         estimator=est,
                         ordered=ordered,
-                        finalize_with_resid_covariances=method.params.get(
-                            "finalize_with_resid_covariances", False
-                        ),
+                        finalize_with_resid_covariances=finalize_with_resid_covariances,
                         mi_cutoff=method.params.get("mi_cutoff", 10.0),
                         sepc_cutoff=method.params.get("sepc_cutoff", 0.10),
                         max_add=method.params.get("max_add", 5),

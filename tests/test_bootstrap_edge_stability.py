@@ -101,7 +101,7 @@ def test_hill_climb_bootstrap_returns_probabilities(monkeypatch):
 
     _, best_score = search_best_graph_climber(
         data,
-        g,
+        initial_graph=g,
         max_iter=0,
         bootstrap_resamples=2,
         bootstrap_random_state=1,

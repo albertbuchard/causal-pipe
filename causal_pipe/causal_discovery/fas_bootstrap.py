@@ -10,9 +10,9 @@ from causallearn.utils.cit import CIT
 from causallearn.utils.FAS import fas
 from causallearn.graph.GeneralGraph import GeneralGraph
 
-from causal_pipe.utilities.graph_utilities import get_nodes_from_node_names, visualize_graph
+from causal_pipe.utilities.graph_utilities import get_nodes_from_node_names
 from .bootstrap_utils import make_graph
-
+from .static_causal_discovery import visualize_graph
 
 _fas_bootstrap_data = None
 _fas_bootstrap_node_names = None

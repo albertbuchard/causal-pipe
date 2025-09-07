@@ -12,10 +12,9 @@ from causallearn.graph.GeneralGraph import GeneralGraph
 from causal_pipe.utilities.graph_utilities import (
     get_nodes_from_node_names,
     copy_graph,
-    visualize_graph,
 )
 from .bootstrap_utils import format_oriented_edge, make_graph
-
+from .static_causal_discovery import visualize_graph
 
 _fci_bootstrap_data = None
 _fci_bootstrap_graph = None

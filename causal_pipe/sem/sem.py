@@ -929,6 +929,7 @@ def _hc_bootstrap_worker(seed: int):
 
 def search_best_graph_climber(
     data: pd.DataFrame,
+    *,
     initial_graph: GeneralGraph,
     node_names: Optional[List[str]] = None,
     max_iter: int = 1000,
@@ -942,8 +943,7 @@ def search_best_graph_climber(
     forbid_pairs: Optional[pd.DataFrame] = None,
     same_occasion_regex: Optional[str] = None,
     ordered: Optional[List[str]] = None,
-    *,
-    respect_pag: bool = False,
+    respect_pag: bool = True,
     bootstrap_resamples: int = 0,
     bootstrap_random_state: Optional[int] = None,
     n_jobs: Optional[int] = 1,
