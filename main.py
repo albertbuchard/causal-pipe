@@ -59,6 +59,6 @@ if __name__ == "__main__":
         show_plots=False,
         verbose=True,
     )
-    # compare_easy_dataset(config)
+    compare_easy_dataset(config)
     compare_easy_dataset_with_ordinal(config)
-    # compare_hard_dataset(config)
+    compare_hard_dataset(config)

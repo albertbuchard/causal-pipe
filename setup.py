@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="causal-pipe",
-    version="0.9.6",
+    version="0.9.8",
     author="Buchard, Albert",
     author_email="albert.buchard@gmail.com",
     description="A Python package streamlining the causal discovery pipeline for easy use.",
@@ -11,7 +11,7 @@ setup(
     url="https://github.com/albertbuchard/causal-pipe",
     packages=find_packages(),
     install_requires=[
-        "numpy==1.18.0",
+        "numpy==1.26.0",
         "scipy>=1.4.0",
         "scikit-learn>=0.22.0",
         "causal-learn==0.1.3.8",
