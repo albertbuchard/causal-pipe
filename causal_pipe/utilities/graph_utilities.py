@@ -858,14 +858,11 @@ def add_edge_probabilities_to_graph(
 ):
     """Create a graph annotated only with edge probabilities."""
 
-    node_lookup: Dict[str, GraphNode] = {
-        n.get_name(): n for n in graph.get_nodes()
-    }
-    prob_graph = GeneralGraph(nodes=list(node_lookup.values()))
+    prob_graph = GeneralGraph(nodes=graph.get_nodes())
     edges_with_probabilities: List[EdgeWithCoefficient] = []
     for edge in graph.get_graph_edges():
-        n1 = node_lookup[edge.get_node1().get_name()]
-        n2 = node_lookup[edge.get_node2().get_name()]
+        n1 = edge.get_node1()
+        n2 = edge.get_node2()
         new_edge = EdgeWithCoefficient(
             n1, n2, edge.endpoint1, edge.endpoint2, coefficient=None
         )

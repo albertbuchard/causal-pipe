@@ -336,7 +336,6 @@ class CausalPipe:
                 visualize_graph(
                     self.undirected_graph,
                     title="BCSL Global Skeleton",
-                    labels=dict(zip(range(len(df.columns)), df.columns)),
                     show=show_plots,
                     output_path=os.path.join(
                         self.output_path, "BCSL_Global_Skeleton.png"
@@ -369,7 +368,7 @@ class CausalPipe:
                 visualize_graph(
                     self.undirected_graph,
                     title="FAS Global Skeleton",
-                    labels=dict(zip(range(len(df.columns)), df.columns)),
+                    # labels=dict(zip(range(len(df.columns)), df.columns)),
                     show=show_plots,
                     output_path=os.path.join(
                         self.output_path, "FAS_Global_Skeleton.png"
@@ -411,7 +410,6 @@ class CausalPipe:
                             prob_graph,
                             edges=edges_with_probabilities,
                             title=f"Best FAS Bootstrap Graph (p={prob:.2f})",
-                            labels=dict(zip(range(len(df.columns)), df.columns)),
                             show=show_plots,
                             output_path=os.path.join(
                                 self.output_path,
@@ -475,7 +473,6 @@ class CausalPipe:
                 visualize_graph(
                     graph_fci,
                     title="Causal Learn FCI Result",
-                    labels=dict(zip(range(len(df.columns)), df.columns)),
                     show=show_plot,
                     output_path=os.path.join(self.output_path, "FCI_Result.png"),
                 )
@@ -491,7 +488,6 @@ class CausalPipe:
                 visualize_graph(
                     self.directed_graph,
                     title="Hill Climbing Oriented Graph",
-                    labels=dict(zip(range(len(df.columns)), df.columns)),
                     show=show_plot,
                     output_path=os.path.join(
                         self.output_path, "Hill_Climbing_Result.png"
@@ -618,7 +614,6 @@ class CausalPipe:
                         coef_graph,
                         edges=edges_with_coefficients,
                         title="SEM Result",
-                        labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
                         output_path=os.path.join(
                             out_sem_dir, "sem_result_with_coefficients.png"
@@ -627,7 +622,6 @@ class CausalPipe:
                     visualize_graph(
                         directed_graph,
                         title="SEM Result",
-                        labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
                         output_path=os.path.join(
                             out_sem_dir, "sem_result_without_coefficients.png"
@@ -683,7 +677,6 @@ class CausalPipe:
                     visualize_graph(
                         best_graph,
                         title="Best Graph Climber Result",
-                        labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
                         output_path=os.path.join(out_sem_dir, "best_graph.png"),
                     )
@@ -697,7 +690,6 @@ class CausalPipe:
                         coef_graph,
                         edges=edges_with_coefficients,
                         title="Best Graph Climber Result With Coefficients",
-                        labels=dict(zip(range(len(df.columns)), df.columns)),
                         show=show_plot,
                         output_path=os.path.join(
                             out_sem_dir, "best_graph_with_coefficients.png"
