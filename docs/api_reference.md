@@ -198,10 +198,12 @@ Retrieves the names of ordinal and nominal variables.
     - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters.
     - `bootstrap_resamples` (`int`, default `0`): Number of bootstrap resamples for skeleton stability estimation. Must be non-negative.
     - `bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the skeleton bootstrap resampling procedure.
+    - `bootstrap_edge_threshold` (`Optional[float]`, default `None`): If set, edges in the best bootstrap graph with probability below this threshold are removed. Must be between `0.0` and `1.0`.
 
 - **Validations:**
     - `alpha` must be between `0.0` and `1.0`.
     - `bootstrap_resamples` must be non-negative.
+    - `bootstrap_edge_threshold` must be between `0.0` and `1.0`.
 
 ---
 
