@@ -174,7 +174,7 @@ class GraphHillClimber:
                         if neighbor_score_fn_output["score"] > best_score:
                             best_score = neighbor_score_fn_output["score"]
                             best_neighbor = neighbor
-                    elif is_better_model == NO_BETTER_MODEL:
+                    elif is_better_model == NO_BETTER_MODEL and not self.respect_pag:
                         # Handle cases where the neighbor model is not directly better but might allow further exploration
                         changed_edge: Edge = switched_edges[idx]
                         edge_in_neighbor = neighbor.get_edge(

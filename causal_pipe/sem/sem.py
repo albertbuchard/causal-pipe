@@ -44,6 +44,7 @@ def fit_sem_lavaan(
     ordered: Optional[List[str]] = None,
     exogenous_vars_model_1: Optional[List[str]] = None,
     exogenous_vars_model_2: Optional[List[str]] = None,
+    exogenous_residual_covariances: bool = False,
 ) -> Dict[str, Any]:
     """
     Fits a Structural Equation Model (SEM) using the specified model string and returns comprehensive results.
@@ -153,6 +154,10 @@ def fit_sem_lavaan(
     ro.globalenv["model_string"] = model_1_string
     ro.globalenv["estimator"] = estimator
 
+    ro.globalenv["use_conditional_x"] = ro.r('TRUE')
+    if exogenous_residual_covariances:
+        ro.globalenv["use_conditional_x"] = ro.r('FALSE')
+
     # Fit the SEM model with the ordered argument if provided
     try:
         if ordered_without_exogenous_model_1:
@@ -168,14 +173,22 @@ def fit_sem_lavaan(
                 """
                     fit.mod <- sem(model = model_string, data = data, std.lv = TRUE, 
                                    estimator = estimator, 
-                                   ordered = ordered_vars)
+                                   ordered = ordered_vars, 
+                                   auto.cov.y = FALSE,
+                                   fixed.x = use_conditional_x,
+                                   conditional.x = use_conditional_x,
+                                   auto.cov.lv.x = FALSE)
                 """
             )
         else:
             ro.r(
                 """
                     fit.mod <- sem(model = model_string, data = data, std.lv = TRUE, 
-                                   estimator = estimator, representation = "RAM")
+                                   estimator = estimator, representation = "RAM", 
+                                   auto.cov.y = FALSE,
+                                   fixed.x = use_conditional_x,
+                                   conditional.x = use_conditional_x,
+                                   auto.cov.lv.x = FALSE)
                 """
             )
     except Exception as e:
@@ -514,14 +527,22 @@ def fit_sem_lavaan(
                     """
                     fit.mod2 <- sem(model = model_2_string, data = data, std.lv = TRUE, 
                                    estimator = estimator, 
-                                   ordered = ordered_vars_model_2)
+                                   ordered = ordered_vars_model_2, 
+                                   auto.cov.y = FALSE,
+                                   fixed.x = use_conditional_x,
+                                   conditional.x = use_conditional_x,
+                                   auto.cov.lv.x = FALSE)
                     """
                 )
             else:
                 ro.r(
                     """
                     fit.mod2 <- sem(model = model_2_string, data = data, std.lv = TRUE, 
-                                   estimator = estimator, representation = "RAM")
+                                   estimator = estimator, representation = "RAM", 
+                                   auto.cov.y = FALSE,
+                                   fixed.x = use_conditional_x,
+                                   conditional.x = use_conditional_x,
+                                   auto.cov.lv.x = FALSE)
                     """
                 )
         except Exception as e:
@@ -783,6 +804,7 @@ class SEMScore:
         self,
         general_graph: GeneralGraph,
         compared_to_graph: Optional[GeneralGraph] = None,
+        exogenous_residual_covariances: bool = False,
     ) -> Dict[str, Any]:
         """
         Fits an SEM model for the given graph and returns the results.
@@ -828,6 +850,7 @@ class SEMScore:
                 model_2_string=compare_model_string,
                 ordered=self.ordered,
                 exogenous_vars_model_1=exogenous_vars,
+                exogenous_residual_covariances=exogenous_residual_covariances,
             )
 
         return results
@@ -946,25 +969,25 @@ def search_best_graph_climber(
     if finalize_with_resid_covariances:
         # Preserve the original score before any augmentation
         best_score["without_added_covariance_score"] = baseline_score
-
-        model_str, _exog = general_graph_to_sem_model(best_graph)
-        from causal_pipe.sem.resid_covariance_augmentation import (
-            augment_residual_covariances_stepwise,
-        )
-
-        augmented = augment_residual_covariances_stepwise(
-            data=data,
-            model_string=model_str,
-            estimator=estimator,
-            max_add=max_add,
-            mi_cutoff=mi_cutoff,
-            sepc_cutoff=sepc_cutoff,
-            delta_stop=delta_stop,
-            whitelist_pairs=whitelist_pairs,
-            forbid_pairs=forbid_pairs,
-            same_occasion_regex=same_occasion_regex,
-            verbose=True,
-        )
+        augmented = sem_score.exhaustive_results(best_graph, exogenous_residual_covariances=True)
+        # model_str, _exog = general_graph_to_sem_model(best_graph)
+        # from causal_pipe.sem.resid_covariance_augmentation import (
+        #     augment_residual_covariances_stepwise,
+        # )
+        #
+        # augmented = augment_residual_covariances_stepwise(
+        #     data=data,
+        #     model_string=model_str,
+        #     estimator=estimator,
+        #     max_add=max_add,
+        #     mi_cutoff=mi_cutoff,
+        #     sepc_cutoff=sepc_cutoff,
+        #     delta_stop=delta_stop,
+        #     whitelist_pairs=whitelist_pairs,
+        #     forbid_pairs=forbid_pairs,
+        #     same_occasion_regex=same_occasion_regex,
+        #     verbose=True,
+        # )
 
         best_score["resid_cov_aug"] = augmented
 
