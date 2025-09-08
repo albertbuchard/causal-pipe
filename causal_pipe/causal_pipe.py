@@ -42,7 +42,7 @@ from .pipe_config import (
     BCSLSkeletonMethod,
     FCIOrientationMethod,
     HillClimbingOrientationMethod,
-    VariableTypes,
+    VariableTypes, CausalEffectMethodNameEnum,
 )
 from .utilities.utilities import dump_json_to, set_seed_python_and_r
 
@@ -729,7 +729,12 @@ class CausalPipe:
                     )
                     with open(os.path.join(out_sem_dir, "fit_summary.txt"), "w") as f:
                         f.write(f"{sem_results.get('fit_summary')}")
-                elif method.name == "pysr":
+                elif method.name == CausalEffectMethodNameEnum.PYSR:
+                    # Output directory for PySR results
+                    out_dir = os.path.join(
+                        self.output_path, "causal_effect", method.name
+                    )
+                    os.makedirs(out_dir, exist_ok=True)
                     # Symbolic regression using PySR
                     graph = (
                         self.directed_graph
@@ -738,16 +743,31 @@ class CausalPipe:
                     )
                     pysr_params = dict(method.params or {})
                     hc_orient = pysr_params.pop("hc_orient_undirected_edges", True)
+                    pysr_params["output_directory"] = os.path.join(out_dir, "pysr_output")
+                    pysr_params["random_state"] = self.seed
+                    binary_operators=[
+                        "+", "*", "-", "/","^",
+                          # "mod", "min",
+                          # "max", ">", "<",
+                          # "logical_or", "logical_and"
+                    ]
+                    unary_operators=[
+                        # "cos",
+                        # "tan",
+                        "exp",
+                        # "sin",
+                        "sqrt",
+                        "log",
+                        "cube"
+                    ]
+                    pysr_params["binary_operators"] = pysr_params.get("binary_operators", binary_operators)
+                    pysr_params["unary_operators"] = pysr_params.get("unary_operators", unary_operators)
                     self.causal_effects[method.name] = symbolic_regression_causal_effect(
                         df,
                         graph,
                         pysr_params=pysr_params,
                         hc_orient_undirected_edges=hc_orient,
                     )
-                    out_dir = os.path.join(
-                        self.output_path, "causal_effect", method.name
-                    )
-                    os.makedirs(out_dir, exist_ok=True)
                     dump_json_to(
                         data=self.causal_effects[method.name],
                         path=os.path.join(out_dir, f"{method.name}_results.json"),

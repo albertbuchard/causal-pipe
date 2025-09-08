@@ -1,5 +1,5 @@
 import json
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -10,10 +10,17 @@ from .partial_correlations.partial_correlations import get_parents_or_undirected
 from .sem.sem import search_best_graph_climber
 
 
-def _fit_pysr(X: np.ndarray, y: np.ndarray, params: Dict) -> Tuple[str, float]:
+def _fit_pysr(X: np.ndarray,
+              y: np.ndarray,
+              params: Dict,
+              variable_names: Optional[List[str]] = None,
+              penalize_absent_features: bool = True,
+              penalty_coeff: Union[str, float] = 1e3
+              ) -> Tuple[Dict[str, Any], float]:
     """Fit a PySR symbolic regression model and return equation string and R^2."""
     try:
-        from pysr import PySRRegressor
+        from pysr import PySRRegressor, jl
+        # jl.seval('import Pkg; Pkg.add("DynamicExpressions"); using DynamicExpressions')
     except ImportError as exc:
         raise ImportError("PySR is required for symbolic regression causal effect estimation") from exc
 
@@ -24,16 +31,53 @@ def _fit_pysr(X: np.ndarray, y: np.ndarray, params: Dict) -> Tuple[str, float]:
         # Use a constant column when no predictors are provided
         X = np.ones((len(X), 1))
 
+    # skip penalty if no real predictors
+    apply_penalty = penalize_absent_features and (X.shape[1] > 0)
+
+    if apply_penalty:
+        coeff = f"{penalty_coeff:.6g}" if isinstance(penalty_coeff, (int, float)) else str(penalty_coeff)
+
+        penalty_code = lambda total_vars, coeff: fr"""
+feature_absent_penalty(ex, dataset, options) = begin
+    # base MSE
+    pred, ok = eval_tree_array(ex, dataset.X, options)
+    if !ok
+        return Inf
+    end
+    base = sum((pred .- dataset.y).^2) / dataset.n
+
+    # count distinct variable leaves
+    used = Set{{Int}}()
+    function walk(n)
+        if n.degree == 0
+            if !n.constant
+                push!(used, Int(n.feature))
+            end
+        elseif n.degree == 1
+            walk(n.l)
+        else
+            walk(n.l); walk(n.r)
+        end
+    end
+    walk(ex.tree)
+
+    missing = max(0, {total_vars} - length(used))
+    return base + {coeff} * missing
+end
+"""
+        params = {**params, "loss_function_expression": penalty_code(X.shape[1], coeff)}
+
     model = PySRRegressor(**params)
-    model.fit(X, y)
+    model.fit(X, y, variable_names=variable_names)
+    best = {}
     try:
-        equation = str(model.get_best()['repr'])
+        best = { k: v for k, v in model.get_best().to_dict().items() if k != "lambda_format" }
+        best["latex"] = model.latex()
     except Exception:
         # Fallback if get_best is not available
-        equation = str(model)
-    y_hat = model.predict(X)
-    r2 = 1 - np.sum((y - y_hat) ** 2) / np.sum((y - np.mean(y)) ** 2)
-    return equation, float(r2)
+        best["sympy_format"] = str(model.get_best()["sympy_format"])
+    r2 = model.score(X, y)
+    return best, float(r2)
 
 
 def symbolic_regression_causal_effect(
@@ -174,9 +218,11 @@ def symbolic_regression_causal_effect(
         for name, pidxs in parent_indices.items():
             X = df.iloc[:, pidxs].values if pidxs else np.empty((len(df), 0))
             y = df[name].values
-            equation, r2 = _fit_pysr(X, y, params)
+            variable_names = [node_names[idx] for idx in pidxs] if pidxs else None
+            best, r2 = _fit_pysr(X, y, params, variable_names=variable_names)
             structural_equations[name] = {
-                "equation": equation,
+                "equation": best["sympy_format"] if "sympy_format" in best else str(best),
+                "best": best,
                 "r2": r2,
                 "parents": [node_names[idx] for idx in pidxs],
             }
@@ -193,9 +239,11 @@ def symbolic_regression_causal_effect(
     for name, pidxs in parent_indices.items():
         X = df.iloc[:, pidxs].values if pidxs else np.empty((len(df), 0))
         y = df[name].values
-        equation, r2 = _fit_pysr(X, y, params)
+        variable_names = [node_names[idx] for idx in pidxs] if pidxs else None
+        best, r2 = _fit_pysr(X, y, params, variable_names=variable_names)
         structural_equations[name] = {
-            "equation": equation,
+            "equation": best["sympy_format"] if "sympy_format" in best else str(best),
+            "best": best,
             "r2": r2,
             "parents": [node_names[idx] for idx in pidxs],
         }

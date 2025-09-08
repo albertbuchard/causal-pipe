@@ -6,7 +6,7 @@ from causal_pipe.causal_pipe import (
 from causal_pipe.pipe_config import (
     VariableTypes,
     DataPreprocessingParams,
-    CausalEffectMethod,
+    CausalEffectMethod, CausalEffectMethodNameEnum,
 )
 from examples.easy import compare_easy_dataset
 from examples.easy_ordinal import compare_easy_dataset_with_ordinal
@@ -39,23 +39,29 @@ if __name__ == "__main__":
         orientation_method=FCIOrientationMethod(),
         causal_effect_methods=[
             # Best method - Respect FCI Edge Directions - No Climbing
-            CausalEffectMethod(name="sem", directed=True, params={"estimator": "MLR"}),
+            CausalEffectMethod(name=CausalEffectMethodNameEnum.SEM, directed=True, params={"estimator": "MLR"}),
             # For ordinal data
             # CausalEffectMethod(
             #     name="sem", directed=True, params={"estimator": "WLSMV"}
             # ),
             # Simple pearson/spearman partial correlation
-            CausalEffectMethod(name="pearson", directed=True),
+            CausalEffectMethod(name=CausalEffectMethodNameEnum.PEARSON, directed=True),
             # CausalEffectMethod(name="spearman", directed=True),
             # SEM Climbing, only ML based estimators are supported
-            CausalEffectMethod(
-                name="sem-climbing", directed=True, params={"estimator": "ML",
-                                                            "respect_pag": True,
-                                                            "finalize_with_resid_covariances": True}
-            ),
+            # CausalEffectMethod(
+            #     name="sem-climbing", directed=True, params={"estimator": "ML",
+            #                                                 "respect_pag": True,
+            #                                                 "finalize_with_resid_covariances": True}
+            # ),
             # CausalEffectMethod(
             #     name="sem-climbing", directed=True, params={"estimator": "MLR"}
             # ),
+            # PySR-based Causal Effect estimation
+            CausalEffectMethod(
+                name=CausalEffectMethodNameEnum.PYSR,
+                directed=True,
+                params={"hc_orient_undirected_edges": False},
+            ),
         ],
         study_name="pipe_easy_dataset",
         output_path="./output/",
@@ -63,5 +69,5 @@ if __name__ == "__main__":
         verbose=True,
     )
     compare_easy_dataset(config)
-    compare_easy_dataset_with_ordinal(config)
-    compare_hard_dataset(config)
+    # compare_easy_dataset_with_ordinal(config)
+    # compare_hard_dataset(config)
