@@ -75,7 +75,7 @@ class Graph:
         return False
 
 
-def _linear_fit(X, y, params):
+def _linear_fit(X, y, params, variable_names=None):
     if X.ndim == 1:
         X = X.reshape(-1, 1)
     if X.shape[1] == 0:
@@ -254,4 +254,40 @@ def test_no_hc_treats_undirected_as_parents(monkeypatch):
 
     assert res["edge_tests"] == {}
     assert res["structural_equations"]["A"]["parents"] == ["B"]
+    assert res["structural_equations"]["B"]["parents"] == ["A"]
+
+
+def test_dataframe_columns_reordered(monkeypatch):
+    """Variable names should follow the graph ordering even if the DataFrame
+    columns are out of order."""
+    pysr_reg = _load_pysr_module(monkeypatch)
+
+    # Record variable_names passed to the internal _fit_pysr calls
+    calls = []
+
+    def record_fit(X, y, params, variable_names=None):
+        calls.append(variable_names)
+        return _linear_fit(X, y, params)
+
+    monkeypatch.setattr(pysr_reg, "_fit_pysr", record_fit)
+    # Avoid hill climbing altering the graph
+    monkeypatch.setattr(
+        pysr_reg, "search_best_graph_climber", lambda *a, **k: (a[1], {})
+    )
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=100)
+    y = 2 * x + rng.normal(scale=0.1, size=100)
+
+    # DataFrame columns deliberately not in graph order
+    df = pd.DataFrame({"B": y, "A": x})
+
+    node_a, node_b = Node("A"), Node("B")
+    g = Graph([node_a, node_b])
+    g.add_edge(Edge(node_a, node_b, Endpoint.TAIL, Endpoint.ARROW))
+
+    res = pysr_reg.symbolic_regression_causal_effect(df, g)
+
+    # The first call corresponds to node A (no parents); the second is for B with parent A
+    assert calls == [None, ["A"]]
     assert res["structural_equations"]["B"]["parents"] == ["A"]
