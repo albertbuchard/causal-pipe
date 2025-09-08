@@ -68,6 +68,7 @@ class CausalEffectMethodNameEnum(str, Enum):
     KCI = "kci"
     SEM = "sem"
     SEM_CLIMBING = "sem-climbing"
+    PYSR = "pysr"
 
 
 # Pydantic Models with Validations

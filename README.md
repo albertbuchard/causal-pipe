@@ -27,7 +27,7 @@
 - **Data Preprocessing:** Handle missing values using multiple imputation (`MICE`), encode categorical variables, standardize features, and perform feature selection based on correlation.
 - **Skeleton Identification:** Identify the global skeleton of the causal graph using methods like Fast Adjacency Search (`FAS`) or Bootstrap-based Causal Structure Learning (`BCSL`).
 - **Edge Orientation:** Orient edges in the skeleton using algorithms such as Fast Causal Inference (`FCI`) or Hill Climbing.
-- **Causal Effect Estimation:** Estimate causal effects using various methods, including Partial Pearson Correlation, Partial Spearman Correlation, Conditional Mutual Information (`MI`), Kernel Conditional Independence (`KCI`), Structural Equation Modeling (`SEM`), and Hill Climbing-based SEM.
+- **Causal Effect Estimation:** Estimate causal effects using various methods, including Partial Pearson Correlation, Partial Spearman Correlation, Conditional Mutual Information (`MI`), Kernel Conditional Independence (`KCI`), Structural Equation Modeling (`SEM`), Hill Climbing-based SEM, and PySR-based symbolic regression that infers structural equations and can optionally orient remaining undirected edges via SEM hill climbing or treat them as exogenous parents.
 - **Visualization:** Generate and save visualizations for correlation graphs, skeletons, oriented graphs, and SEM results.
 - **Modular Configuration:** Easily configure different aspects of the pipeline through dataclasses, allowing for flexible and customizable causal discovery workflows.
 - **Integration with R:** Utilize R's `lavaan` package for advanced Structural Equation Modeling directly within Python using `rpy2`.

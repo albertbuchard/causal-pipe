@@ -35,6 +35,7 @@ from causal_pipe.utilities.graph_utilities import (
     add_edge_probabilities_to_graph,
 )
 from causal_pipe.utilities.plot_utilities import plot_correlation_graph
+from causal_pipe.pysr_regression import symbolic_regression_causal_effect
 from .pipe_config import (
     CausalPipeConfig,
     FASSkeletonMethod,
@@ -728,7 +729,29 @@ class CausalPipe:
                     )
                     with open(os.path.join(out_sem_dir, "fit_summary.txt"), "w") as f:
                         f.write(f"{sem_results.get('fit_summary')}")
-
+                elif method.name == "pysr":
+                    # Symbolic regression using PySR
+                    graph = (
+                        self.directed_graph
+                        if method.directed
+                        else self.undirected_graph
+                    )
+                    pysr_params = dict(method.params or {})
+                    hc_orient = pysr_params.pop("hc_orient_undirected_edges", True)
+                    self.causal_effects[method.name] = symbolic_regression_causal_effect(
+                        df,
+                        graph,
+                        pysr_params=pysr_params,
+                        hc_orient_undirected_edges=hc_orient,
+                    )
+                    out_dir = os.path.join(
+                        self.output_path, "causal_effect", method.name
+                    )
+                    os.makedirs(out_dir, exist_ok=True)
+                    dump_json_to(
+                        data=self.causal_effects[method.name],
+                        path=os.path.join(out_dir, f"{method.name}_results.json"),
+                    )
                 else:
                     raise ValueError(
                         f"Unsupported causal effect estimation method: {method.name}"

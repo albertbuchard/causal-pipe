@@ -51,7 +51,14 @@ class _DummyGraph:
 
 causallearn_graph_GeneralGraph.GeneralGraph = _DummyGraph
 causallearn_graph_Edge.Edge = type("Edge", (), {})
-causallearn_graph_Endpoint.Endpoint = type("Endpoint", (), {})
+class _Endpoint(dict):
+    def __getattr__(self, name):
+        return self[name]
+
+
+causallearn_graph_Endpoint.Endpoint = _Endpoint(
+    TAIL="TAIL", ARROW="ARROW", CIRCLE="CIRCLE"
+)
 
 
 class GraphNode:
