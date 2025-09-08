@@ -8,16 +8,58 @@ causal_pipe_pkg = types.ModuleType("causal_pipe")
 causal_pipe_pkg.__path__ = [os.path.join(ROOT, "causal_pipe")]
 sys.modules.setdefault("causal_pipe", causal_pipe_pkg)
 
+import importlib
+
+for mod in [
+    "causallearn",
+    "causallearn.graph",
+    "causallearn.graph.GraphNode",
+    "causallearn.graph.GeneralGraph",
+    "causallearn.graph.Edge",
+    "causallearn.graph.Endpoint",
+    "causallearn.graph.NodeType",
+    "causallearn.utils",
+    "causallearn.utils.cit",
+    "causallearn.utils.GraphUtils",
+    "bcsl.graph_utils",
+]:
+    sys.modules.pop(mod, None)
+
+bcsl_graph_utils = types.ModuleType("bcsl.graph_utils")
+bcsl_graph_utils.get_nondirected_edge = (
+    lambda n1, n2: Edge(n1, n2, Endpoint.TAIL, Endpoint.TAIL)
+)
+bcsl_graph_utils.get_undirected_edge = (
+    lambda n1, n2: Edge(n1, n2, Endpoint.TAIL, Endpoint.TAIL)
+)
+bcsl_graph_utils.get_directed_edge = (
+    lambda n1, n2: Edge(n1, n2, Endpoint.TAIL, Endpoint.ARROW)
+)
+bcsl_graph_utils.get_bidirected_edge = (
+    lambda n1, n2: Edge(n1, n2, Endpoint.ARROW, Endpoint.ARROW)
+)
+sys.modules["bcsl.graph_utils"] = bcsl_graph_utils
+
 import pytest
 from causallearn.graph.GraphNode import GraphNode
 from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.graph.Edge import Edge
 from causallearn.graph.Endpoint import Endpoint
-from bcsl.graph_utils import get_bidirected_edge, get_directed_edge
-
+import causal_pipe.utilities.graph_utilities as graph_utils
+importlib.reload(graph_utils)
 from causal_pipe.utilities.graph_utilities import get_neighbors_general_graph
+import causal_pipe.sem.hill_climber as hill_climber
+importlib.reload(hill_climber)
 from causal_pipe.sem.hill_climber import GraphHillClimber
 from causal_pipe.utilities.model_comparison_utilities import NO_BETTER_MODEL
+
+
+def get_bidirected_edge(n1, n2):
+    return Edge(n1, n2, Endpoint.ARROW, Endpoint.ARROW)
+
+
+def get_directed_edge(n1, n2):
+    return Edge(n1, n2, Endpoint.TAIL, Endpoint.ARROW)
 
 
 def build_pag():

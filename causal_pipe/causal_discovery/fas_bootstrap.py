@@ -80,7 +80,6 @@ def bootstrap_fas_edge_stability(
     fas_kwargs: Optional[Dict[str, Any]] = None,
     output_dir: Optional[str] = None,
     n_jobs: Optional[int] = 1,
-    edge_threshold: Optional[float] = None,
 ) -> Tuple[
     Dict[Tuple[str, str], float],
     Optional[
@@ -108,9 +107,6 @@ def bootstrap_fas_edge_stability(
         Directory to save the top bootstrap graphs.
     n_jobs : Optional[int], default 1
         Number of worker processes for parallel execution.
-    edge_threshold : Optional[float], default None
-        If provided, edges in the best bootstrap graph with probability below
-        this threshold are removed before returning.
     """
 
     if resamples <= 0:
@@ -200,18 +196,10 @@ def bootstrap_fas_edge_stability(
             reverse=True,
         )
         best_prob, best_edges_display = prob_graphs[0]
-        if edge_threshold is None:
-            filtered_edges_display = best_edges_display
-        else:
-            filtered_edges_display = [
-                (a, b)
-                for (a, b) in best_edges_display
-                if probs_unordered.get(frozenset((a, b)), 0.0) >= edge_threshold
-            ]
         graph_obj = make_graph(
             node_names,
-            [(a, b, "TAIL", "TAIL") for (a, b) in filtered_edges_display],
-        ) 
+            [(a, b, "TAIL", "TAIL") for (a, b) in best_edges_display],
+        )
         best_sepsets: Dict[Tuple[int, int], Set[int]] = {}
         for (i, j), cnt in sepset_counts.items():
             S_best = set(max(cnt.items(), key=lambda x: x[1])[0])
