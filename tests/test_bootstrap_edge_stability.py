@@ -91,7 +91,12 @@ class Edge:
         return self._n2
 
 
-Endpoint = {"TAIL": "TAIL", "ARROW": "ARROW"}
+class _Endpoint(dict):
+    def __getattr__(self, item):
+        return self[item]
+
+
+Endpoint = _Endpoint(TAIL="TAIL", ARROW="ARROW", CIRCLE="CIRCLE")
 
 causallearn_utils_cit.CIT = DummyCIT
 causallearn_utils_FAS.fas = dummy_fas

@@ -26,6 +26,7 @@ from causal_pipe.sem.sem import (
     search_best_graph_climber,
 )
 from causal_pipe.causal_discovery.fas_bootstrap import bootstrap_fas_edge_stability
+from causal_pipe.causal_discovery.bootstrap_utils import make_graph
 from causal_pipe.utilities.graph_utilities import (
     copy_graph,
     unify_edge_types_directed_undirected,
@@ -390,32 +391,50 @@ class CausalPipe:
                         random_state=self.skeleton_method.bootstrap_random_state,
                         fas_kwargs=fas_kwargs,
                         output_dir=os.path.join(self.output_path, "fas_bootstrap"),
-                        edge_threshold=self.skeleton_method.bootstrap_edge_threshold,
                         n_jobs=self.skeleton_method.n_jobs,
                     )
-                    if self.best_graph_with_fas_bootstrap:
-                        prob, best_graph_bootstrap, edge_probs, sepsets_bootstrap = (
-                            self.best_graph_with_fas_bootstrap
-                        )
-                        self.undirected_graph = best_graph_bootstrap
-                        self.sepsets = sepsets_bootstrap
-                        oriented_probs = {
-                            k: {"TAIL-TAIL": v} for k, v in edge_probs.items()
-                        }
-                        prob_graph, edges_with_probabilities = (
-                            add_edge_probabilities_to_graph(
-                                best_graph_bootstrap, oriented_probs
-                            )
+                    oriented_probs = {
+                        k: {"TAIL-TAIL": v} for k, v in self.fas_edge_probabilities.items()
+                    }
+                    prob_graph, edges_with_probabilities = add_edge_probabilities_to_graph(
+                        self.undirected_graph, oriented_probs
+                    )
+                    visualize_graph(
+                        prob_graph,
+                        edges=edges_with_probabilities,
+                        title="FAS Graph with Bootstrap Probabilities",
+                        show=show_plots,
+                        output_path=os.path.join(
+                            self.output_path,
+                            "fas_bootstrap",
+                            "full_graph.png",
+                        ),
+                    )
+                    if self.skeleton_method.bootstrap_edge_threshold is not None:
+                        threshold = self.skeleton_method.bootstrap_edge_threshold
+                        node_names = list(df.columns)
+                        filtered_edges = []
+                        for edge in self.undirected_graph.get_graph_edges():
+                            a = edge.get_node1().get_name()
+                            b = edge.get_node2().get_name()
+                            if (
+                                self.fas_edge_probabilities.get((a, b), 0.0)
+                                >= threshold
+                            ):
+                                filtered_edges.append((a, b, "TAIL", "TAIL"))
+                        self.undirected_graph = make_graph(node_names, filtered_edges)
+                        prob_graph, edges_with_probabilities = add_edge_probabilities_to_graph(
+                            self.undirected_graph, oriented_probs
                         )
                         visualize_graph(
                             prob_graph,
                             edges=edges_with_probabilities,
-                            title=f"Best FAS Bootstrap Graph (p={prob:.2f})",
+                            title=f"FAS Graph with Bootstrap Probabilities (threshold={threshold})",
                             show=show_plots,
                             output_path=os.path.join(
                                 self.output_path,
                                 "fas_bootstrap",
-                                "best_graph.png",
+                                "full_graph_thresholded.png",
                             ),
                         )
             else:
