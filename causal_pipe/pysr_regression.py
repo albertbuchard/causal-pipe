@@ -122,7 +122,21 @@ def symbolic_regression_causal_effect(
     }
     params = {**default_params, **pysr_params}
 
-    node_names = list(df.columns)
+    # Align DataFrame columns with graph node ordering to ensure
+    # consistent variable name mapping between the data and the graph.
+    # PySR expects ``variable_names`` to correspond exactly to the
+    # columns passed in ``X``.  Previously, the code assumed the order of
+    # ``df.columns`` matched ``graph.nodes``.  When this was not true, the
+    # indices returned from ``graph`` were applied to mismatched columns,
+    # causing variables to be mislabelled (e.g., ``Var 3`` becoming
+    # ``Var 4``).  We now explicitly reorder the DataFrame according to
+    # the graph's node ordering and use those names throughout.
+
+    node_names = [node.get_name() for node in graph.nodes]
+    # Reindex the DataFrame to match the graph ordering.  This will raise
+    # a KeyError if a graph node is missing from the data, surfacing any
+    # inconsistencies early.
+    df = df[node_names].copy()
 
     if hc_orient_undirected_edges:
         # Attempt to orient edges via hill climbing prior to PySR fits
