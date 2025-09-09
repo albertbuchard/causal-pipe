@@ -1003,7 +1003,10 @@ def graph_with_coefficient_to_pydot(
             coefficient = edge.coefficient
             probability = getattr(edge, "probability", None)
             if coefficient is not None:
-                parts.append(f"{coefficient:.3f}")
+                try:
+                    parts.append(f"{coefficient:.3f}")
+                except (ValueError, TypeError):
+                    parts.append(str(coefficient))
                 if coefficient > 0:
                     color = POSITIVE_COLOR
                 elif coefficient < 0:
