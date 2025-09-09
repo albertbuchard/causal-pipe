@@ -24,6 +24,7 @@ from scipy import stats
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 from causal_pipe.utilities.graph_utilities import graph_with_coefficient_to_pydot
+from typing import Optional, Dict
 
 
 def mi_to_pearson(mi):
@@ -526,7 +527,13 @@ def visualize_causal_graph(
 
 
 def visualize_graph(
-    graph, edges=None, title=None, show=True, output_path=None, labels=None
+    graph,
+    edges=None,
+    title=None,
+    show=True,
+    output_path=None,
+    labels=None,
+    structural_equations: Optional[Dict[str, str]] = None,
 ):
     """
     Visualizes the causal graph.
@@ -536,9 +543,17 @@ def visualize_graph(
     - title (str): The title of the graph.
     - show (bool): Whether to display the graph.
     - output_path (str): The path to save the graph image.
-    - labels (list): Optional list of labels for the nodes
+    - labels (list): Optional list of labels for the nodes.
+    - structural_equations (dict): Optional mapping of node names to structural
+      equation strings. When provided, equations are displayed under nodes.
     """
-    pyd = graph_with_coefficient_to_pydot(graph, edges=edges, labels=labels, dpi=300)
+    pyd = graph_with_coefficient_to_pydot(
+        graph,
+        edges=edges,
+        labels=labels,
+        dpi=300,
+        structural_equations=structural_equations,
+    )
     tmp_png = pyd.create_png()
     sio = io.BytesIO()
     sio.write(tmp_png)
