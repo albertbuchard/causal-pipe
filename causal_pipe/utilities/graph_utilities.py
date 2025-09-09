@@ -807,9 +807,25 @@ def add_psyr_structural_equation_to_edge_coefficients(
     if not structural_equations:
         raise ValueError("No structural_equations in psyr_output.")
 
-    # TODO
     coef_graph = copy_graph(final_graph)
     edges_with_coefficients: List[Edge] = []
+    added_equation_to_node = {}
+    for edge in final_graph.get_graph_edges():
+        n1 = edge.get_node1()
+        n2 = edge.get_node2()
+        endpoint_1 = edge.endpoint1
+        endpoint_2 = edge.endpoint2
+        equation = structural_equations.get(n2.get_name()).get("equation")
+        if equation is None or n2.get_name() in added_equation_to_node:
+            edges_with_coefficients.append(edge)
+            continue
+        added_equation_to_node[n2.get_name()] = True
+        edge_coef = EdgeWithCoefficient(
+            n1, n2, endpoint_1, endpoint_2, coefficient=equation
+        )
+        coef_graph.remove_edge(edge)
+        coef_graph.add_edge(edge_coef)
+        edges_with_coefficients.append(edge_coef)
 
     return coef_graph, edges_with_coefficients
 

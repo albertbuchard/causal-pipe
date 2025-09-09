@@ -19,6 +19,7 @@ def compare_super_basic_dataset(config: CausalPipeConfig):
     """
     # Reproducibility
     np.random.seed(config.seed)
+    config.study_name = "pipe_super_basic_dataset"
 
     # True graph
     true_graph = create_true_causal_graph_super_basic()

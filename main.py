@@ -64,7 +64,7 @@ if __name__ == "__main__":
                 params={"hc_orient_undirected_edges": False},
             ),
         ],
-        study_name="pipe_easy_dataset",
+        study_name="pipe_super_basic_dataset",
         output_path="./output/",
         show_plots=False,
         verbose=True,
