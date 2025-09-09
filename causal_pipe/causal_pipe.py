@@ -762,17 +762,20 @@ class CausalPipe:
                     #     show=show_plot,
                     #     output_path=os.path.join(out_dir, "pysr_scm.png"),
                     # )
-                    coef_graph, edges_with_coefficients = (
+                    coef_graph, edges, structural_equations = (
                         add_psyr_structural_equation_to_edge_coefficients(
                             psyr_output=self.causal_effects[method.name],
                         )
                     )
                     visualize_graph(
                         coef_graph,
-                        edges=edges_with_coefficients,
+                        edges=edges,
+                        structural_equations=structural_equations,
                         title="PySR SCM Result",
                         show=show_plot,
-                        output_path=os.path.join(out_dir, "pysr_scm_with_equations.png")
+                        output_path=os.path.join(
+                            out_dir, "pysr_scm_with_equations.png"
+                        ),
                     )
                 else:
                         raise ValueError(
