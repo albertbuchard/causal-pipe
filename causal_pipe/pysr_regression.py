@@ -9,7 +9,7 @@ from causallearn.graph.GeneralGraph import GeneralGraph
 
 from .partial_correlations.partial_correlations import get_parents_or_undirected
 from .sem.sem import search_best_graph_climber
-from .utilities.graph_utilities import is_fully_oriented, both_circles
+from .utilities.graph_utilities import is_fully_oriented, both_circles, copy_graph, unify_edge_types_directed_undirected
 
 
 def _fit_pysr(X: np.ndarray,
@@ -149,15 +149,10 @@ def symbolic_regression_causal_effect(
     }
     params = {**default_params, **pysr_params}
 
-    # Align DataFrame columns with graph node ordering to ensure
-    # consistent variable name mapping between the data and the graph.
-    # PySR expects ``variable_names`` to correspond exactly to the
-    # columns passed in ``X``.  Previously, the code assumed the order of
-    # ``df.columns`` matched ``graph.nodes``.  When this was not true, the
-    # indices returned from ``graph`` were applied to mismatched columns,
-    # causing variables to be mislabelled (e.g., ``Var 3`` becoming
-    # ``Var 4``).  We now explicitly reorder the DataFrame according to
-    # the graph's node ordering and use those names throughout.
+    # Make a copy of the graph to avoid modifying the input
+    original_graph = graph
+    graph = copy_graph(graph)
+
     nodes = graph.nodes
     node_names = [node.get_name() for node in nodes]
 
@@ -166,11 +161,11 @@ def symbolic_regression_causal_effect(
     # inconsistencies early.
     df = df[node_names].copy()
 
+    edge_tests: Dict[str, Dict] = {}
     if hc_orient_undirected_edges:
         if not respect_pag:
             raise NotImplementedError("Only Hill Climbing with PAG respect is implemented for PySR orientation.")
 
-        edge_tests: Dict[str, Dict] = {}
 
         for i, target_node in enumerate(nodes):
             target_name = target_node.get_name()
@@ -270,39 +265,63 @@ def symbolic_regression_causal_effect(
                 }
 
         # Determine final parent sets based on orientation suggestions
-        parent_names: Dict[str, List[str]] = {}
-        for node in nodes:
-            name = node.get_name()
-            # include existing directed parents from graph
-            for parent in graph.get_parents(node):
-                parent_names[name].append(parent.get_name())
+        # parent_names: Dict[str, List[str]] = {}
+        # for node in nodes:
+        #     name = node.get_name()
+        #     # include existing directed parents from graph
+        #     for parent in graph.get_parents(node):
+        #         parent_names[name].append(parent.get_name())
 
+        # for info in edge_tests.values():
+        #     src, dst = info["suggested_orientation"].split(" -> ")
+        #     dst_names = parent_names[dst]
+        #     if src not in dst_names:
+        #         dst_names.append(src)
+
+        # Update the graph with the suggested orientations
         for info in edge_tests.values():
             src, dst = info["suggested_orientation"].split(" -> ")
-            dst_names = parent_names[dst]
-            if src not in dst_names:
-                dst_names.append(src)
+            src_node = graph.get_node(src)
+            dst_node = graph.get_node(dst)
+            if src_node is None or dst_node is None:
+                raise ValueError(f"Nodes {src} or {dst} not found in graph during orientation update.")
+            # Get edge and update
+            edge = graph.get_edge(src_node, dst_node)
+            if edge is None:
+                raise ValueError(f"Edge {src} - {dst} not found in graph during orientation update.")
+            graph.remove_edge(edge)
+            graph.add_directed_edge(src_node, dst_node)
 
-        structural_equations: Dict[str, Dict] = {}
-        for target_name, pnames in parent_names.items():
-            X = df.loc[:, pnames].values if pnames else np.empty((len(df), 0))
-            y = df[target_name].values
-            variable_names = pnames or None
-            best, r2 = _fit_pysr(X, y, params, variable_names=variable_names)
-            structural_equations[target_name] = {
-                "equation": best["sympy_format"] if "sympy_format" in best else str(best),
-                "best": best,
-                "r2": r2,
-                "parents": pnames,
-            }
+        # # Remove CIRCLE edges
+        # graph = unify_edge_types_directed_undirected(graph)
+        # parent_names: Dict[str, List[str]] = {}
+        # for node in nodes:
+        #     name = node.get_name()
+        #     # include existing directed parents from graph
+        #     for parent in graph.get_parents(node):
+        #         parent_names[name].append(parent.get_name())
+        #
+        # structural_equations: Dict[str, Dict] = {}
+        # for target_name, pnames in parent_names.items():
+        #     X = df.loc[:, pnames].values if pnames else np.empty((len(df), 0))
+        #     y = df[target_name].values
+        #     variable_names = pnames or None
+        #     best, r2 = _fit_pysr(X, y, params, variable_names=variable_names)
+        #     structural_equations[target_name] = {
+        #         "equation": best["sympy_format"] if "sympy_format" in best else str(best),
+        #         "best": best,
+        #         "r2": r2,
+        #         "parents": pnames,
+        #     }
 
-        return {"edge_tests": edge_tests, "structural_equations": structural_equations}
+        # return {"edge_tests": edge_tests, "structural_equations": structural_equations, "final_graph": graph}
 
     # When hill climbing orientation is disabled, treat undirected neighbors as parents
     parent_names: Dict[str, List[int]] = {}
-    for i, name in enumerate(node_names):
-        predictors, pred_indices = get_parents_or_undirected(graph, i)
-        parent_names[name] = [n.get_name() for n in predictors]
+    for target_node in nodes:
+        target_name = target_node.get_name()
+        predictors, pred_indices = get_parents_or_undirected(graph, graph.node_map[target_node])
+        parent_names[target_name] = [n.get_name() for n in predictors]
 
     structural_equations: Dict[str, Dict] = {}
     for target_name, pnames in parent_names.items():
@@ -317,4 +336,4 @@ def symbolic_regression_causal_effect(
             "parents": pnames,
         }
 
-    return {"edge_tests": {}, "structural_equations": structural_equations}
+    return {"edge_tests": edge_tests, "structural_equations": structural_equations, "final_graph": graph}

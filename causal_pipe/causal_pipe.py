@@ -45,6 +45,7 @@ from .pipe_config import (
     VariableTypes, CausalEffectMethodNameEnum,
 )
 from .utilities.utilities import dump_json_to, set_seed_python_and_r
+from .utilities.visualize_pysr_scm import graph_with_pysr_scm
 
 
 class CausalPipe:
@@ -754,6 +755,12 @@ class CausalPipe:
                     dump_json_to(
                         data=self.causal_effects[method.name],
                         path=os.path.join(out_dir, f"{method.name}_results.json"),
+                    )
+                    graph = graph_with_pysr_scm(
+                        self.causal_effects[method.name],
+                        title="PySR SCM Result",
+                        show=show_plot,
+                        output_path=os.path.join(out_dir, "pysr_scm.png"),
                     )
                 else:
                     raise ValueError(

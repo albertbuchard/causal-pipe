@@ -796,6 +796,24 @@ def add_edge_coefficients_from_sem_fit(
     return coef_graph, edges_with_coefficients
 
 
+def add_psyr_structural_equation_to_edge_coefficients(
+    psyr_output: Dict[str, Any],
+) -> Tuple[GeneralGraph, List[Edge]]:
+    """Extract coefficients from PySR structural equations."""
+    final_graph = psyr_output.get("final_graph")
+    if final_graph is None:
+        raise ValueError("No final_graph in psyr_output.")
+    structural_equations = psyr_output.get("structural_equations", {})
+    if not structural_equations:
+        raise ValueError("No structural_equations in psyr_output.")
+
+    # TODO
+    coef_graph = copy_graph(final_graph)
+    edges_with_coefficients: List[Edge] = []
+
+    return coef_graph, edges_with_coefficients
+
+
 class EdgeWithCoefficient(Edge):
     def __init__(
         self,

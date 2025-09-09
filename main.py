@@ -11,6 +11,7 @@ from causal_pipe.pipe_config import (
 from examples.easy import compare_easy_dataset
 from examples.easy_ordinal import compare_easy_dataset_with_ordinal
 from examples.hard import compare_hard_dataset
+from examples.super_basic import compare_super_basic_dataset
 
 if __name__ == "__main__":
     """
@@ -68,6 +69,7 @@ if __name__ == "__main__":
         show_plots=False,
         verbose=True,
     )
-    compare_easy_dataset(config)
+    compare_super_basic_dataset(config)
+    # compare_easy_dataset(config)
     # compare_easy_dataset_with_ordinal(config)
     # compare_hard_dataset(config)
