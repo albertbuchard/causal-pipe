@@ -291,3 +291,44 @@ def test_dataframe_columns_reordered(monkeypatch):
     # The first call corresponds to node A (no parents); the second is for B with parent A
     assert calls == [None, ["A"]]
     assert res["structural_equations"]["B"]["parents"] == ["A"]
+
+
+def test_graph_nodes_reordered_after_hc(monkeypatch):
+    """Even if ``search_best_graph_climber`` returns a graph with a different
+    node ordering, variable names must still align with the graph."""
+    pysr_reg = _load_pysr_module(monkeypatch)
+
+    # Record variable_names passed to _fit_pysr
+    calls = []
+
+    def record_fit(X, y, params, variable_names=None):
+        calls.append(variable_names)
+        return _linear_fit(X, y, params)
+
+    monkeypatch.setattr(pysr_reg, "_fit_pysr", record_fit)
+
+    def reverse_nodes(data, initial_graph, node_names, respect_pag=True):
+        rev_graph = Graph(initial_graph.nodes[::-1])
+        for e in initial_graph._edges:
+            rev_graph.add_edge(e)
+        return rev_graph, {}
+
+    # Hill climber returns graph with reversed node order
+    monkeypatch.setattr(pysr_reg, "search_best_graph_climber", reverse_nodes)
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=100)
+    y = 2 * x + rng.normal(scale=0.1, size=100)
+
+    df = pd.DataFrame({"A": x, "B": y})
+
+    node_a, node_b = Node("A"), Node("B")
+    g = Graph([node_a, node_b])
+    # Directed edge A -> B
+    g.add_edge(Edge(node_a, node_b, Endpoint.TAIL, Endpoint.ARROW))
+
+    res = pysr_reg.symbolic_regression_causal_effect(df, g)
+
+    # With node order reversed, the first fit is for B with parent A
+    assert calls == [["A"], None]
+    assert res["structural_equations"]["B"]["parents"] == ["A"]
