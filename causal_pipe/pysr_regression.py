@@ -147,6 +147,14 @@ def symbolic_regression_causal_effect(
                 node_names=node_names,
                 respect_pag=True,
             )
+            # ``search_best_graph_climber`` may return a graph whose
+            # internal node ordering differs from the one supplied in
+            # ``initial_graph``.  Because subsequent steps rely on the
+            # positional correspondence between the graph's nodes and the
+            # DataFrame columns, recompute the ordering and realign the
+            # DataFrame after the hill-climbing step.
+            node_names = [node.get_name() for node in graph.nodes]
+            df = df[node_names].copy()
         except Exception:
             # If hill climbing fails, continue with original graph
             pass
