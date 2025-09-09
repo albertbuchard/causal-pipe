@@ -869,6 +869,10 @@ class CausalEffectMethod(BaseModel):
         directed (bool): True if the method starts from the directed graph,
                         False if it will use the undirected graph (Markov Blanket / General Skeleton).
         params (Optional[Dict[str, Any]]): Additional parameters for the method.
+            - For `'pysr'`, accepts ``hc_orient_undirected_edges`` (`bool`, default
+              ``True``) to attempt hill-climbing orientation of undirected edges
+              before fitting PySR; when ``False`` undirected neighbors are
+              treated as parents.
     """
 
     name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
@@ -956,4 +960,4 @@ class CausalPipeConfig(BaseModel):
   - `"Hill Climbing"`: Hill Climbing Algorithm.
 
 - **`CausalEffectMethodNameEnum`**: Names of methods for estimating causal effects.
-  - `'pearson'`, `'spearman'`, `'mi'`, `'kci'`, `'sem'`, `'sem-climbing'`.
+  - `'pearson'`, `'spearman'`, `'mi'`, `'kci'`, `'sem'`, `'sem-climbing'`, `'pysr'`.

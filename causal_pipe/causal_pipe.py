@@ -33,18 +33,20 @@ from causal_pipe.utilities.graph_utilities import (
     general_graph_to_sem_model,
     get_nodes_from_node_names,
     add_edge_coefficients_from_sem_fit,
-    add_edge_probabilities_to_graph,
+    add_edge_probabilities_to_graph, add_psyr_structural_equation_to_edge_coefficients,
 )
 from causal_pipe.utilities.plot_utilities import plot_correlation_graph
+from causal_pipe.pysr_regression import symbolic_regression_causal_effect
 from .pipe_config import (
     CausalPipeConfig,
     FASSkeletonMethod,
     BCSLSkeletonMethod,
     FCIOrientationMethod,
     HillClimbingOrientationMethod,
-    VariableTypes,
+    VariableTypes, CausalEffectMethodNameEnum,
 )
 from .utilities.utilities import dump_json_to, set_seed_python_and_r
+from .utilities.visualize_pysr_scm import graph_with_pysr_scm
 
 
 class CausalPipe:
@@ -747,11 +749,57 @@ class CausalPipe:
                     )
                     with open(os.path.join(out_sem_dir, "fit_summary.txt"), "w") as f:
                         f.write(f"{sem_results.get('fit_summary')}")
-
-                else:
-                    raise ValueError(
-                        f"Unsupported causal effect estimation method: {method.name}"
+                elif method.name == CausalEffectMethodNameEnum.PYSR:
+                    # Output directory for PySR results
+                    out_dir = os.path.join(
+                        self.output_path, "causal_effect", method.name
                     )
+                    os.makedirs(out_dir, exist_ok=True)
+                    # Symbolic regression using PySR
+                    graph = (
+                        self.directed_graph
+                        if method.directed
+                        else self.undirected_graph
+                    )
+                    pysr_params = dict(method.params or {})
+                    hc_orient = pysr_params.pop("hc_orient_undirected_edges", True)
+                    pysr_params["output_directory"] = os.path.join(out_dir, "pysr_output")
+                    pysr_params["random_state"] = self.seed
+                    self.causal_effects[method.name] = symbolic_regression_causal_effect(
+                        df,
+                        graph,
+                        pysr_params=pysr_params,
+                        hc_orient_undirected_edges=hc_orient,
+                    )
+                    dump_json_to(
+                        data=self.causal_effects[method.name],
+                        path=os.path.join(out_dir, f"{method.name}_results.json"),
+                    )
+                    # graph = graph_with_pysr_scm(
+                    #     self.causal_effects[method.name],
+                    #     title="PySR SCM Result",
+                    #     show=show_plot,
+                    #     output_path=os.path.join(out_dir, "pysr_scm.png"),
+                    # )
+                    coef_graph, edges, structural_equations = (
+                        add_psyr_structural_equation_to_edge_coefficients(
+                            psyr_output=self.causal_effects[method.name],
+                        )
+                    )
+                    visualize_graph(
+                        coef_graph,
+                        edges=edges,
+                        structural_equations=structural_equations,
+                        title="PySR SCM Result",
+                        show=show_plot,
+                        output_path=os.path.join(
+                            out_dir, "pysr_scm_with_equations.png"
+                        ),
+                    )
+                else:
+                        raise ValueError(
+                            f"Unsupported causal effect estimation method: {method.name}"
+                        )
 
             print("Causal effect estimation completed.")
             return self.causal_effects

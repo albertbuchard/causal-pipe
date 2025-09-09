@@ -5,6 +5,7 @@ from typing import List, Tuple, Dict, Any, Optional
 
 import numpy as np
 import pydot
+import html
 from bcsl.graph_utils import (
     get_nondirected_edge,
     get_undirected_edge,
@@ -796,6 +797,41 @@ def add_edge_coefficients_from_sem_fit(
     return coef_graph, edges_with_coefficients
 
 
+def add_psyr_structural_equation_to_edge_coefficients(
+    psyr_output: Dict[str, Any],
+) -> Tuple[GeneralGraph, List[Edge], Dict[str, str]]:
+    """
+    Extract structural equations from PySR output.
+
+    Parameters
+    ----------
+    psyr_output : Dict[str, Any]
+        Output dictionary returned by ``symbolic_regression_causal_effect``.
+
+    Returns
+    -------
+    Tuple[GeneralGraph, List[Edge], Dict[str, str]]
+        A copy of the final graph, its edges and a mapping from node name to
+        its structural equation string.
+    """
+    final_graph = psyr_output.get("final_graph")
+    if final_graph is None:
+        raise ValueError("No final_graph in psyr_output.")
+    structural_equations = psyr_output.get("structural_equations", {})
+    if not structural_equations:
+        raise ValueError("No structural_equations in psyr_output.")
+
+    coef_graph = copy_graph(final_graph)
+    edges: List[Edge] = coef_graph.get_graph_edges()
+    node_equations: Dict[str, str] = {}
+    for node_name, info in structural_equations.items():
+        equation = info.get("equation")
+        if equation is not None:
+            node_equations[node_name] = equation
+
+    return coef_graph, edges, node_equations
+
+
 class EdgeWithCoefficient(Edge):
     def __init__(
         self,
@@ -884,6 +920,7 @@ def graph_with_coefficient_to_pydot(
     labels: Optional[List[str]] = None,
     title: str = "",
     dpi: float = 200,
+    structural_equations: Optional[Dict[str, str]] = None,
 ) -> pydot.Dot:
     """
     Convert a GeneralGraph object to a DOT object with edge coefficients and color coding.
@@ -900,13 +937,15 @@ def graph_with_coefficient_to_pydot(
         The title of the graph.
     dpi : float, optional (default=200)
         The resolution of the graph.
+    structural_equations : dict, optional (default=None)
+        Mapping from node name to structural equation string. If provided, the
+        equation is displayed under the node label.
 
     Returns
     -------
     pydot_g : pydot.Dot
         The DOT representation of the graph.
     """
-    import pydot
 
     nodes = G.get_nodes()
     if labels is not None:
@@ -918,7 +957,12 @@ def graph_with_coefficient_to_pydot(
 
     # Add nodes to the pydot graph
     for i, node in enumerate(nodes):
-        node_label = labels[i] if labels is not None else node.get_name()
+        node_name = node.get_name()
+        node_label = labels[i] if labels is not None else node_name
+        if structural_equations and node_name in structural_equations:
+            equation = html.escape(str(structural_equations[node_name]))
+            base_label = html.escape(str(node_label))
+            node_label = f"<{base_label}<br/><font point-size='8'>{equation}</font>>"
         node_shape = "square" if node.get_node_type() == NodeType.LATENT else "ellipse"
         pydot_node = pydot.Node(str(i), label=node_label, shape=node_shape)
         pydot_g.add_node(pydot_node)
@@ -969,11 +1013,16 @@ def graph_with_coefficient_to_pydot(
             coefficient = edge.coefficient
             probability = getattr(edge, "probability", None)
             if coefficient is not None:
-                parts.append(f"{coefficient:.3f}")
-                if coefficient > 0:
-                    color = POSITIVE_COLOR
-                elif coefficient < 0:
-                    color = NEGATIVE_COLOR
+                try:
+                    parts.append(f"{coefficient:.3f}")
+                    if coefficient > 0:
+                        color = POSITIVE_COLOR
+                    elif coefficient < 0:
+                        color = NEGATIVE_COLOR
+                except (ValueError, TypeError):
+                    parts.append(str(coefficient))
+                    color = "black"
+
             if probability is not None:
                 prob_pct = probability * 100
                 if parts:

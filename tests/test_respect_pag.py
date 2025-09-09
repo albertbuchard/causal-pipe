@@ -41,6 +41,140 @@ bcsl_graph_utils.get_bidirected_edge = (
 sys.modules["bcsl.graph_utils"] = bcsl_graph_utils
 
 import pytest
+import types
+
+# Stub out heavy dependencies from causallearn and bcsl.graph_utils
+causallearn = types.ModuleType("causallearn")
+causallearn_graph = types.ModuleType("causallearn.graph")
+causallearn_graph_GraphNode = types.ModuleType("causallearn.graph.GraphNode")
+causallearn_graph_GeneralGraph = types.ModuleType("causallearn.graph.GeneralGraph")
+causallearn_graph_Edge = types.ModuleType("causallearn.graph.Edge")
+causallearn_graph_Endpoint = types.ModuleType("causallearn.graph.Endpoint")
+
+
+class GraphNode:
+    def __init__(self, name):
+        self._name = name
+
+    def get_name(self):
+        return self._name
+
+
+class Edge:
+    def __init__(self, n1, n2, e1=None, e2=None):
+        self.node1, self.node2 = n1, n2
+        self.endpoint1, self.endpoint2 = e1, e2
+
+
+class Endpoint(dict):
+    def __getattr__(self, name):
+        return self[name]
+
+
+Endpoint = Endpoint(TAIL="TAIL", ARROW="ARROW", CIRCLE="CIRCLE")
+
+
+class GeneralGraph:
+    def __init__(self, nodes):
+        self._nodes = nodes
+        self._edges = []
+        self.node_map = {node: i for i, node in enumerate(nodes)}
+
+    def add_edge(self, edge):
+        if edge is not None:
+            self._edges.append(edge)
+
+    def add_directed_edge(self, n1, n2):
+        self.add_edge(Edge(n1, n2, Endpoint.TAIL, Endpoint.ARROW))
+
+    def remove_edge(self, edge):
+        if edge in self._edges:
+            self._edges.remove(edge)
+
+    def remove_connecting_edge(self, n1, n2):
+        edge = self.get_edge(n1, n2)
+        if edge in self._edges:
+            self._edges.remove(edge)
+
+    def get_graph_edges(self):
+        return self._edges
+
+    def get_nodes(self):
+        return self._nodes
+
+    def get_num_nodes(self):
+        return len(self._nodes)
+
+    def get_edge(self, n1, n2):
+        for e in self._edges:
+            if e is None:
+                continue
+            if (e.node1 == n1 and e.node2 == n2) or (e.node1 == n2 and e.node2 == n1):
+                return e
+        return None
+
+    def get_node_edges(self, node):
+        return [e for e in self._edges if e.node1 == node or e.node2 == node]
+
+    def is_adjacent_to(self, n1, n2):
+        return self.get_edge(n1, n2) is not None
+
+    def is_directed_from_to(self, n1, n2):
+        e = self.get_edge(n1, n2)
+        if e is None:
+            return False
+        if e.node1 == n1 and e.endpoint1 == Endpoint.TAIL and e.endpoint2 == Endpoint.ARROW:
+            return True
+        if e.node2 == n1 and e.endpoint2 == Endpoint.TAIL and e.endpoint1 == Endpoint.ARROW:
+            return True
+        return False
+
+    def get_children(self, node):
+        children = []
+        for e in self._edges:
+            if e.node1 == node and e.endpoint1 == Endpoint.TAIL and e.endpoint2 == Endpoint.ARROW:
+                children.append(e.node2)
+            elif e.node2 == node and e.endpoint2 == Endpoint.TAIL and e.endpoint1 == Endpoint.ARROW:
+                children.append(e.node1)
+        return children
+
+    def get_parents(self, node):
+        parents = []
+        for e in self._edges:
+            if e.node1 == node and e.endpoint1 == Endpoint.ARROW and e.endpoint2 == Endpoint.TAIL:
+                parents.append(e.node2)
+            elif e.node2 == node and e.endpoint2 == Endpoint.ARROW and e.endpoint1 == Endpoint.TAIL:
+                parents.append(e.node1)
+        return parents
+
+
+causallearn_graph_GraphNode.GraphNode = GraphNode
+causallearn_graph_GeneralGraph.GeneralGraph = GeneralGraph
+causallearn_graph_Edge.Edge = Edge
+causallearn_graph_Endpoint.Endpoint = Endpoint
+
+sys.modules.setdefault("causallearn", causallearn)
+sys.modules.setdefault("causallearn.graph", causallearn_graph)
+sys.modules.setdefault("causallearn.graph.GraphNode", causallearn_graph_GraphNode)
+sys.modules.setdefault("causallearn.graph.GeneralGraph", causallearn_graph_GeneralGraph)
+sys.modules.setdefault("causallearn.graph.Edge", causallearn_graph_Edge)
+sys.modules.setdefault("causallearn.graph.Endpoint", causallearn_graph_Endpoint)
+
+bcsl_graph_utils = types.ModuleType("bcsl.graph_utils")
+
+
+def get_bidirected_edge(n1, n2):
+    return Edge(n1, n2, Endpoint.ARROW, Endpoint.ARROW)
+
+
+def get_directed_edge(n1, n2):
+    return Edge(n1, n2, Endpoint.TAIL, Endpoint.ARROW)
+
+
+bcsl_graph_utils.get_bidirected_edge = get_bidirected_edge
+bcsl_graph_utils.get_directed_edge = get_directed_edge
+sys.modules.setdefault("bcsl.graph_utils", bcsl_graph_utils)
+
 from causallearn.graph.GraphNode import GraphNode
 from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.graph.Edge import Edge

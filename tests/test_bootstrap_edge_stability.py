@@ -69,9 +69,23 @@ class GeneralGraph:
     def __init__(self, nodes):
         self._nodes = nodes
         self._edges = []
+        self.node_map = {node: i for i, node in enumerate(nodes)}
 
     def add_edge(self, edge):
-        self._edges.append(edge)
+        if edge is not None:
+            self._edges.append(edge)
+
+    def add_directed_edge(self, n1, n2):
+        self.add_edge(Edge(n1, n2, Endpoint.TAIL, Endpoint.ARROW))
+
+    def remove_edge(self, edge):
+        if edge in self._edges:
+            self._edges.remove(edge)
+
+    def remove_connecting_edge(self, n1, n2):
+        edge = self.get_edge(n1, n2)
+        if edge in self._edges:
+            self._edges.remove(edge)
 
     def get_graph_edges(self):
         return self._edges
@@ -79,24 +93,71 @@ class GeneralGraph:
     def get_nodes(self):
         return self._nodes
 
+    def get_num_nodes(self):
+        return len(self._nodes)
+
+    def get_edge(self, n1, n2):
+        for e in self._edges:
+            if e is None:
+                continue
+            if (e.node1 == n1 and e.node2 == n2) or (e.node1 == n2 and e.node2 == n1):
+                return e
+        return None
+
+    def get_node_edges(self, node):
+        return [e for e in self._edges if e.node1 == node or e.node2 == node]
+
+    def is_adjacent_to(self, n1, n2):
+        return self.get_edge(n1, n2) is not None
+
+    def is_directed_from_to(self, n1, n2):
+        e = self.get_edge(n1, n2)
+        if e is None:
+            return False
+        if e.node1 == n1 and e.endpoint1 == Endpoint.TAIL and e.endpoint2 == Endpoint.ARROW:
+            return True
+        if e.node2 == n1 and e.endpoint2 == Endpoint.TAIL and e.endpoint1 == Endpoint.ARROW:
+            return True
+        return False
+
+    def get_children(self, node):
+        children = []
+        for e in self._edges:
+            if e.node1 == node and e.endpoint1 == Endpoint.TAIL and e.endpoint2 == Endpoint.ARROW:
+                children.append(e.node2)
+            elif e.node2 == node and e.endpoint2 == Endpoint.TAIL and e.endpoint1 == Endpoint.ARROW:
+                children.append(e.node1)
+        return children
+
+    def get_parents(self, node):
+        parents = []
+        for e in self._edges:
+            if e.node1 == node and e.endpoint1 == Endpoint.ARROW and e.endpoint2 == Endpoint.TAIL:
+                parents.append(e.node2)
+            elif e.node2 == node and e.endpoint2 == Endpoint.ARROW and e.endpoint1 == Endpoint.TAIL:
+                parents.append(e.node1)
+        return parents
+
 
 class Edge:
-    def __init__(self, n1, n2, *args):
-        self._n1, self._n2 = n1, n2
+    def __init__(self, n1, n2, e1=None, e2=None):
+        self.node1, self.node2 = n1, n2
+        self.endpoint1 = e1
+        self.endpoint2 = e2
 
     def get_node1(self):
-        return self._n1
+        return self.node1
 
     def get_node2(self):
-        return self._n2
+        return self.node2
 
 
-class _Endpoint(dict):
-    def __getattr__(self, item):
-        return self[item]
+class Endpoint(dict):
+    def __getattr__(self, name):
+        return self[name]
 
-
-Endpoint = _Endpoint(TAIL="TAIL", ARROW="ARROW", CIRCLE="CIRCLE")
+ 
+Endpoint = Endpoint(TAIL="TAIL", ARROW="ARROW", CIRCLE="CIRCLE") 
 
 causallearn_utils_cit.CIT = DummyCIT
 causallearn_utils_FAS.fas = dummy_fas
@@ -107,10 +168,22 @@ causallearn_graph_Endpoint.Endpoint = Endpoint
 causallearn_graph_NodeType.NodeType = type("NodeType", (), {})
 
 bcsl_graph_utils = types.ModuleType("bcsl.graph_utils")
-bcsl_graph_utils.get_nondirected_edge = lambda *args, **kwargs: None
-bcsl_graph_utils.get_undirected_edge = lambda *args, **kwargs: None
-bcsl_graph_utils.get_directed_edge = lambda *args, **kwargs: None
-bcsl_graph_utils.get_bidirected_edge = lambda *args, **kwargs: None
+def _undirected(n1, n2):
+    return Edge(n1, n2, Endpoint.CIRCLE, Endpoint.CIRCLE)
+
+
+def _directed(n1, n2):
+    return Edge(n1, n2, Endpoint.TAIL, Endpoint.ARROW)
+
+
+def _bidirected(n1, n2):
+    return Edge(n1, n2, Endpoint.ARROW, Endpoint.ARROW)
+
+
+bcsl_graph_utils.get_nondirected_edge = _undirected
+bcsl_graph_utils.get_undirected_edge = _undirected
+bcsl_graph_utils.get_directed_edge = _directed
+bcsl_graph_utils.get_bidirected_edge = _bidirected
 pydot = types.ModuleType("pydot")
 pydot.Dot = type("Dot", (), {})
 pydot.Node = type("Node", (), {})
