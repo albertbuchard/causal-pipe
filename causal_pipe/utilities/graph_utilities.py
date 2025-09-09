@@ -1005,12 +1005,14 @@ def graph_with_coefficient_to_pydot(
             if coefficient is not None:
                 try:
                     parts.append(f"{coefficient:.3f}")
+                    if coefficient > 0:
+                        color = POSITIVE_COLOR
+                    elif coefficient < 0:
+                        color = NEGATIVE_COLOR
                 except (ValueError, TypeError):
                     parts.append(str(coefficient))
-                if coefficient > 0:
-                    color = POSITIVE_COLOR
-                elif coefficient < 0:
-                    color = NEGATIVE_COLOR
+                    color = "black"
+
             if probability is not None:
                 prob_pct = probability * 100
                 if parts:

@@ -774,10 +774,10 @@ class CausalPipe:
                         show=show_plot,
                         output_path=os.path.join(out_dir, "pysr_scm_with_equations.png")
                     )
-            else:
-                    raise ValueError(
-                        f"Unsupported causal effect estimation method: {method.name}"
-                    )
+                else:
+                        raise ValueError(
+                            f"Unsupported causal effect estimation method: {method.name}"
+                        )
 
             print("Causal effect estimation completed.")
             return self.causal_effects
