@@ -3,11 +3,13 @@ from typing import Dict, List, Tuple, Any, Optional, Union
 
 import numpy as np
 import pandas as pd
+from causallearn.graph.Endpoint import Endpoint
 
 from causallearn.graph.GeneralGraph import GeneralGraph
 
 from .partial_correlations.partial_correlations import get_parents_or_undirected
 from .sem.sem import search_best_graph_climber
+from .utilities.graph_utilities import is_fully_oriented, both_circles
 
 
 def _fit_pysr(X: np.ndarray,
@@ -38,11 +40,11 @@ def _fit_pysr(X: np.ndarray,
         coeff = f"{penalty_coeff:.6g}" if isinstance(penalty_coeff, (int, float)) else str(penalty_coeff)
 
         penalty_code = lambda total_vars, coeff: fr"""
-feature_absent_penalty(ex, dataset, options) = begin
+function feature_absent_penalty(ex, dataset::Dataset{{T,L}}, options) where {{T,L}}
     # base MSE
     pred, ok = eval_tree_array(ex, dataset.X, options)
     if !ok
-        return Inf
+        return L(Inf)
     end
     base = sum((pred .- dataset.y).^2) / dataset.n
 
@@ -62,7 +64,30 @@ feature_absent_penalty(ex, dataset, options) = begin
     walk(ex.tree)
 
     missing = max(0, {total_vars} - length(used))
-    return base + {coeff} * missing
+    return L(base + {coeff} * missing)
+end
+"""
+        penalty_code_v2 = lambda total_vars, coeff: fr"""
+ function feature_absent_penalty(ex, dataset::Dataset{{T,L}}, options) where {{T,L}}
+    # Base MSE
+    pred, ok = eval_tree_array(ex, dataset.X, options)
+    if !ok
+        return L(Inf)
+    end
+    base = sum(i -> (pred[i] - dataset.y[i])^2, eachindex(pred)) / dataset.n
+
+    # Count distinct variables
+    total_vars = {total_vars}
+    used = sizehint!(Set{{Int}}(), total_vars)
+    # foreach(ex) do node  # faster version of 'for node in ex'\
+    for node in ex 
+        if node.degree == 0 && !node.constant
+            push!(used, node.feature)
+        end
+    end
+
+    miss = max(0, total_vars - length(used))
+    return L(base + {coeff} * miss)
 end
 """
         params = {**params, "loss_function_expression": penalty_code(X.shape[1], coeff)}
@@ -83,8 +108,9 @@ end
 def symbolic_regression_causal_effect(
     df: pd.DataFrame,
     graph: GeneralGraph,
-    pysr_params: Dict | None = None,
+    pysr_params: Optional[Dict] = None,
     hc_orient_undirected_edges: bool = True,
+    respect_pag: bool = True,
 ) -> Dict:
     """Estimate causal mechanisms using symbolic regression via PySR.
 
@@ -119,6 +145,7 @@ def symbolic_regression_causal_effect(
         "unary_operators": ["exp", "log", "sin", "cos", "sqrt"],
         "maxsize": 20,
         "maxdepth": 5,
+        "constraints": {"pow": (-1, 1)},
     }
     params = {**default_params, **pysr_params}
 
@@ -131,58 +158,77 @@ def symbolic_regression_causal_effect(
     # causing variables to be mislabelled (e.g., ``Var 3`` becoming
     # ``Var 4``).  We now explicitly reorder the DataFrame according to
     # the graph's node ordering and use those names throughout.
+    nodes = graph.nodes
+    node_names = [node.get_name() for node in nodes]
 
-    node_names = [node.get_name() for node in graph.nodes]
     # Reindex the DataFrame to match the graph ordering.  This will raise
     # a KeyError if a graph node is missing from the data, surfacing any
     # inconsistencies early.
     df = df[node_names].copy()
 
     if hc_orient_undirected_edges:
-        # Attempt to orient edges via hill climbing prior to PySR fits
-        try:
-            graph, _ = search_best_graph_climber(
-                data=df,
-                initial_graph=graph,
-                node_names=node_names,
-                respect_pag=True,
-            )
-        except Exception:
-            # If hill climbing fails, continue with original graph
-            pass
+        if not respect_pag:
+            raise NotImplementedError("Only Hill Climbing with PAG respect is implemented for PySR orientation.")
 
         edge_tests: Dict[str, Dict] = {}
 
-        n_nodes = len(node_names)
-        for i in range(n_nodes):
-            target = node_names[i]
-            predictors, pred_indices = get_parents_or_undirected(graph, i)
-            if not pred_indices:
+        for i, target_node in enumerate(nodes):
+            target_name = target_node.get_name()
+            t_idx = graph.node_map[target_node]
+            predictors, _ = get_parents_or_undirected(graph, t_idx)
+            if not predictors:
                 continue
 
-            y = df.iloc[:, i].values
+            y = df.loc[:, target_name].values
 
             # Evaluate each predictor for orientation suggestions
-            for p_idx in pred_indices:
-                if p_idx <= i:
-                    # Avoid duplicate testing of undirected edges
-                    continue
-                p_name = node_names[p_idx]
-                if graph.is_directed_from_to(graph.nodes[p_idx], graph.nodes[i]):
-                    # Already oriented p -> target; no need for test
-                    continue
-                if graph.is_directed_from_to(graph.nodes[i], graph.nodes[p_idx]):
-                    # target -> p; skip since p is child
+            for predictor in predictors:
+                # Check for predictors that could be children in the PAG
+                p_idx = graph.node_map[predictor]
+                p_name = predictor.get_name()
+
+                edge = graph.get_edge(predictor, target_node)
+                if edge is None:
                     continue
 
-                with_idx = pred_indices
-                without_idx = [idx for idx in pred_indices if idx != p_idx]
+                # The only case we would run the test is there is uncertainty about an edge between p - t
+                # if t -> p is in the PAG then p could in fact be a child of t, and we would run the orientation test
+                if is_fully_oriented(edge):
+                    # No uncertainty to resolve in the PAG for p - t
+                    continue
 
-                X_with = df.iloc[:, with_idx].values
+                if not both_circles(edge) and edge.get_endpoint1() != Endpoint.CIRCLE:
+                    # Could be a parent or child or confounded if both circles,
+                    # if both_circles(edge) p o-o t
+                    # Could be p -> t, t -> p, or p <-> t, so we run the orientation test
+                    # If edge.get_endpoint1() == Endpoint.CIRCLE: p o- t
+                    # Could be t -> p or p <-> t so we run the orientation test
+                    # But if edge.get_endpoint2() == Endpoint.CIRCLE: p -o t
+                    # Could be p -> t or p <-> t, not t -> p, we pass, p is not a child
+                    continue
+
+
+
+
+                # if graph.is_directed_from_to(predictor, target_node):
+                #     # Already oriented p -> target; no need for test
+                #     continue
+                # if graph.is_directed_from_to(target_node, predictor):
+                #     # target -> p; skip since p is child
+                #     continue
+                #
+                # with_idx = pred_indices
+                # without_idx = [idx for idx in pred_indices if idx != p_idx]
+
+                with_names = [n.get_name() for n in predictors]
+                without_names = [n for n in with_names if n != p_name]
+
+
+                X_with = df.loc[:, with_names].values
                 _, r2_with = _fit_pysr(X_with, y, params)
 
-                if without_idx:
-                    X_without = df.iloc[:, without_idx].values
+                if without_names:
+                    X_without = df.loc[:, without_names].values
                 else:
                     X_without = np.empty((len(df), 0))
                 _, r2_without = _fit_pysr(X_without, y, params)
@@ -190,76 +236,85 @@ def symbolic_regression_causal_effect(
 
                 # Symmetric test: predictor as target
                 ppredictors, ppred_indices = get_parents_or_undirected(graph, p_idx)
-                if i not in ppred_indices:
-                    ppred_indices.append(i)
-                yp = df.iloc[:, p_idx].values
-                Xp_with = df.iloc[:, ppred_indices].values
+                ppredictors_names = [n.get_name() for n in ppredictors]
+                if target_name not in ppredictors_names:
+                    ppredictors.append(target_node)
+
+                yp = df.loc[:, p_name].values
+
+                Xp_with = df.loc[:, ppredictors_names].values
                 _, r2p_with = _fit_pysr(Xp_with, yp, params)
-                ppred_without = [idx for idx in ppred_indices if idx != i]
+
+                ppred_without = [n for n in ppredictors_names if n != target_name]
                 if ppred_without:
-                    Xp_without = df.iloc[:, ppred_without].values
+                    Xp_without = df.loc[:, ppred_without].values
                 else:
                     Xp_without = np.empty((len(df), 0))
                 _, r2p_without = _fit_pysr(Xp_without, yp, params)
                 improvement_pred = r2p_with - r2p_without
 
-                orientation = (
-                    f"{p_name} -> {target}"
-                    if improvement_target >= improvement_pred
-                    else f"{target} -> {p_name}"
-                )
-                edge_tests[f"{p_name}--{target}"] = {
+                # Orient p -> target if target improves and not vice versa
+                if improvement_target > 0 >= improvement_pred:
+                    orientation = f"{p_name} -> {target_name}"
+                # Orient target -> p if p improves and not target
+                elif improvement_pred > 0 >= improvement_target:
+                    orientation = f"{target_name} -> {p_name}"
+                else:
+                    # If both improve or neither, keep as undirected
+                    continue
+
+                edge_tests[f"{p_name}--{target_name}"] = {
                     "improvement_parent_to_child": improvement_target,
                     "improvement_child_to_parent": improvement_pred,
                     "suggested_orientation": orientation,
                 }
 
         # Determine final parent sets based on orientation suggestions
-        parent_indices: Dict[str, List[int]] = {name: [] for name in node_names}
-        for i, name in enumerate(node_names):
+        parent_names: Dict[str, List[str]] = {}
+        for node in nodes:
+            name = node.get_name()
             # include existing directed parents from graph
-            for parent in graph.get_parents(graph.nodes[i]):
-                parent_indices[name].append(graph.node_map[parent])
+            for parent in graph.get_parents(node):
+                parent_names[name].append(parent.get_name())
 
         for info in edge_tests.values():
             src, dst = info["suggested_orientation"].split(" -> ")
-            dst_idxs = parent_indices[dst]
-            src_idx = node_names.index(src)
-            if src_idx not in dst_idxs:
-                dst_idxs.append(src_idx)
+            dst_names = parent_names[dst]
+            if src not in dst_names:
+                dst_names.append(src)
 
         structural_equations: Dict[str, Dict] = {}
-        for name, pidxs in parent_indices.items():
-            X = df.iloc[:, pidxs].values if pidxs else np.empty((len(df), 0))
-            y = df[name].values
-            variable_names = [node_names[idx] for idx in pidxs] if pidxs else None
+        for target_name, pnames in parent_names.items():
+            X = df.loc[:, pnames].values if pnames else np.empty((len(df), 0))
+            y = df[target_name].values
+            variable_names = pnames or None
             best, r2 = _fit_pysr(X, y, params, variable_names=variable_names)
-            structural_equations[name] = {
+            structural_equations[target_name] = {
                 "equation": best["sympy_format"] if "sympy_format" in best else str(best),
                 "best": best,
                 "r2": r2,
-                "parents": [node_names[idx] for idx in pidxs],
+                "parents": pnames,
             }
 
         return {"edge_tests": edge_tests, "structural_equations": structural_equations}
 
     # When hill climbing orientation is disabled, treat undirected neighbors as parents
-    parent_indices: Dict[str, List[int]] = {name: [] for name in node_names}
+    parent_names: Dict[str, List[int]] = {}
     for i, name in enumerate(node_names):
-        _, pred_indices = get_parents_or_undirected(graph, i)
-        parent_indices[name] = pred_indices
+        predictors, pred_indices = get_parents_or_undirected(graph, i)
+        parent_names[name] = [n.get_name() for n in predictors]
 
     structural_equations: Dict[str, Dict] = {}
-    for name, pidxs in parent_indices.items():
-        X = df.iloc[:, pidxs].values if pidxs else np.empty((len(df), 0))
-        y = df[name].values
-        variable_names = [node_names[idx] for idx in pidxs] if pidxs else None
+    for target_name, pnames in parent_names.items():
+        X = df.loc[:, pnames].values if pnames else np.empty((len(df), 0))
+        y = df[target_name].values
+        variable_names = pnames or None
         best, r2 = _fit_pysr(X, y, params, variable_names=variable_names)
-        structural_equations[name] = {
+        structural_equations[target_name] = {
             "equation": best["sympy_format"] if "sympy_format" in best else str(best),
             "best": best,
             "r2": r2,
-            "parents": [node_names[idx] for idx in pidxs],
+            "parents": pnames,
         }
 
     return {"edge_tests": {}, "structural_equations": structural_equations}

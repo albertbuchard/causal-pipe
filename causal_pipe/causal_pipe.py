@@ -745,23 +745,6 @@ class CausalPipe:
                     hc_orient = pysr_params.pop("hc_orient_undirected_edges", True)
                     pysr_params["output_directory"] = os.path.join(out_dir, "pysr_output")
                     pysr_params["random_state"] = self.seed
-                    binary_operators=[
-                        "+", "*", "-", "/","^",
-                          # "mod", "min",
-                          # "max", ">", "<",
-                          # "logical_or", "logical_and"
-                    ]
-                    unary_operators=[
-                        # "cos",
-                        # "tan",
-                        "exp",
-                        # "sin",
-                        "sqrt",
-                        "log",
-                        "cube"
-                    ]
-                    pysr_params["binary_operators"] = pysr_params.get("binary_operators", binary_operators)
-                    pysr_params["unary_operators"] = pysr_params.get("unary_operators", unary_operators)
                     self.causal_effects[method.name] = symbolic_regression_causal_effect(
                         df,
                         graph,
