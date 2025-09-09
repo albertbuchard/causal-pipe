@@ -52,8 +52,8 @@ class _DummyGraph:
 causallearn_graph_GeneralGraph.GeneralGraph = _DummyGraph
 causallearn_graph_Edge.Edge = type("Edge", (), {})
 class _Endpoint(dict):
-    def __getattr__(self, name):
-        return self[name]
+    def __getattr__(self, item):
+        return self[item]
 
 
 causallearn_graph_Endpoint.Endpoint = _Endpoint(
@@ -108,7 +108,7 @@ sys.modules.setdefault("pydot", pydot)
 from causal_pipe.causal_discovery.fas_bootstrap import bootstrap_fas_edge_stability
 
 
-def test_fas_bootstrap_filters_edges_below_threshold(monkeypatch):
+def test_fas_bootstrap_returns_probabilities_without_filtering(monkeypatch):
     class MockNode:
         def __init__(self, name):
             self._name = name
@@ -153,7 +153,7 @@ def test_fas_bootstrap_filters_edges_below_threshold(monkeypatch):
     )
 
     probs, best_graph = bootstrap_fas_edge_stability(
-        data, resamples=3, random_state=0, edge_threshold=0.8
+        data, resamples=3, random_state=0
     )
 
     assert probs[("A", "B")] == 1.0
@@ -164,4 +164,12 @@ def test_fas_bootstrap_filters_edges_below_threshold(monkeypatch):
         (e.get_node1().get_name(), e.get_node2().get_name())
         for e in graph_obj.get_graph_edges()
     ]
-    assert edges == [("A", "B")]
+    assert sorted(edges) == [("A", "B"), ("B", "C")]
+
+    threshold = 0.8
+    filtered = [
+        (a, b)
+        for (a, b) in edges
+        if probs.get((a, b), probs.get((b, a), 0.0)) >= threshold
+    ]
+    assert filtered == [("A", "B")]

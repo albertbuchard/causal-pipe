@@ -156,8 +156,8 @@ class Endpoint(dict):
     def __getattr__(self, name):
         return self[name]
 
-
-Endpoint = Endpoint(TAIL="TAIL", ARROW="ARROW", CIRCLE="CIRCLE")
+ 
+Endpoint = Endpoint(TAIL="TAIL", ARROW="ARROW", CIRCLE="CIRCLE") 
 
 causallearn_utils_cit.CIT = DummyCIT
 causallearn_utils_FAS.fas = dummy_fas
