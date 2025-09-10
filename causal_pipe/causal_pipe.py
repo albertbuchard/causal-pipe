@@ -53,7 +53,7 @@ from .pipe_config import (
     KCICausalEffectMethod,
     SEMCausalEffectMethod,
     SEMClimbingCausalEffectMethod,
-    PYSRCausalEffectMethod,
+    PYSRCausalEffectMethod, HandlingMissingEnum,
 )
 from .pysr.pysr_hill_climber import search_best_graph_climber_pysr
 from .utilities.utilities import dump_json_to, set_seed_python_and_r
@@ -270,13 +270,18 @@ class CausalPipe:
                 n_missing = df_prepared.isnull().sum().sum()
                 if n_missing > 0:
                     print(f"Found {n_missing} missing values in the dataset.")
-                    if self.preprocessing_params.handling_missing == "drop":
+                    if self.preprocessing_params.handling_missing == HandlingMissingEnum.DROP:
                         print("Dropping rows with missing values...")
                         df_prepared = df_prepared.dropna()
-                    elif self.preprocessing_params.handling_missing == "impute":
+                    elif self.preprocessing_params.handling_missing == HandlingMissingEnum.IMPUTE:
                         print(
                             f"Performing data imputation using {self.preprocessing_params.imputation_method}..."
                         )
+                        if self.preprocessing_params.imputation_method == "mice":
+                            warnings.warn(
+                                "MICE imputation not implemented fully, no pooling across multiple imputations yet.",
+                                UserWarning,
+                            )
                         mice_dfs = perform_multiple_imputation(
                             df_prepared,
                             impute_cols=continuous_vars + nominal_vars + ordinal_vars,
@@ -286,6 +291,7 @@ class CausalPipe:
                             r_mice=self.preprocessing_params.use_r_mice,
                         )
                         # Use the first imputed dataset
+                        # TODO: pooling results across multiple imputations
                         df_prepared = mice_dfs[0]
                     else:
                         raise ValueError(

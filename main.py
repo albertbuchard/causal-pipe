@@ -8,7 +8,7 @@ from causal_pipe.pipe_config import (
     DataPreprocessingParams,
     CausalEffectMethod, CausalEffectMethodNameEnum, PYSRCausalEffectMethod, PearsonCausalEffectMethod,
     SEMCausalEffectMethod, SEMClimbingCausalEffectMethod, SpearmanCausalEffectMethod,
-    PYSRCausalEffectMethodHillClimbing,
+    PYSRCausalEffectMethodHillClimbing, HandlingMissingEnum,
 )
 from examples.easy import compare_easy_dataset
 from examples.easy_ordinal import compare_easy_dataset_with_ordinal
@@ -26,8 +26,9 @@ if __name__ == "__main__":
         # keep_only_correlated_with=None,
         # filter_method="mi",
         # filter_threshold=0.1,
-        handling_missing="impute",
-        imputation_method="mice",
+        handling_missing=HandlingMissingEnum.DROP,
+        # handling_missing="impute",
+        # imputation_method="mice",
         use_r_mice=True,
         full_obs_cols=None,
     )
