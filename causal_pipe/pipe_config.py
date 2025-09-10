@@ -288,11 +288,13 @@ class CausalEffectMethod(BaseModel):
         name (CausalEffectMethodNameEnum): Name of the method.
         directed (bool): True if the method starts from the directed graph,
                         False if it will use the undirected graph (Markov Blanket / General Skeleton).
+        respect_pag (bool): True if the method should respect PAG during hill climbing.
         params (Optional[Dict[str, Any]]): Additional parameters for the method.
     """
 
     name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
     directed: bool = True
+    respect_pag: bool = True
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
@@ -332,7 +334,6 @@ class SEMClimbingCausalEffectMethod(CausalEffectMethod):
 
     name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.SEM_CLIMBING
     estimator: Optional[str] = None
-    respect_pag: bool = True
     finalize_with_resid_covariances: bool = False
     max_iter: int = 100
     mi_cutoff: float = 10.0
@@ -354,7 +355,7 @@ class PYSRCausalEffectMethod(CausalEffectMethod):
     max_iter: int = 500
     restarts: int = 2
     standardized_init: bool = False
-    hc_orient_undirected_edges: bool = True
+    hc_orient_undirected_edges: bool = False
     pysr_params: Dict[str, Any] = Field(default_factory=dict)
 
 
