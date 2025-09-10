@@ -207,8 +207,8 @@ class CyclicSCMSimulator:
             },
             os.path.join(out_dir, "pysr_cyclic_solver_stats.json"),
         )
-        pd.DataFrame(sim_data, columns=self.columns).to_parquet(
-            os.path.join(out_dir, "simulated_dataset.parquet"), index=False
+        pd.DataFrame(sim_data, columns=self.columns).to_csv(
+            os.path.join(out_dir, "pysr_cyclic_simulated_data.csv"), index=False
         )
         solver_stats = {
             "nonconvergence_rate": nonconv_rate,

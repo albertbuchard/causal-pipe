@@ -55,13 +55,13 @@ if __name__ == "__main__":
             #                                                 "finalize_with_resid_covariances": True}
             # ),
             # CausalEffectMethod(
-            #     name="sem-climbing", directed=True, params={"estimator": "MLR"}
+            #     name=CausalEffectMethodNameEnum.SEM_CLIMBING, directed=True, params={"estimator": "MLR", "respect_pag": True}
             # ),
             # PySR-based Causal Effect estimation
             CausalEffectMethod(
                 name=CausalEffectMethodNameEnum.PYSR,
                 directed=True,
-                params={"hc_orient_undirected_edges": False},
+                params={"hc_orient_undirected_edges": True},
             ),
         ],
         study_name="pipe_super_basic_dataset",
