@@ -39,35 +39,7 @@ def _fit_pysr(X: np.ndarray,
     if apply_penalty:
         coeff = f"{penalty_coeff:.6g}" if isinstance(penalty_coeff, (int, float)) else str(penalty_coeff)
 
-        penalty_code = lambda total_vars, coeff: fr"""
-function feature_absent_penalty(ex, dataset::Dataset{{T,L}}, options) where {{T,L}}
-    # base MSE
-    pred, ok = eval_tree_array(ex, dataset.X, options)
-    if !ok
-        return L(Inf)
-    end
-    base = sum((pred .- dataset.y).^2) / dataset.n
-
-    # count distinct variable leaves
-    used = Set{{Int}}()
-    function walk(n)
-        if n.degree == 0
-            if !n.constant
-                push!(used, Int(n.feature))
-            end
-        elseif n.degree == 1
-            walk(n.l)
-        else
-            walk(n.l); walk(n.r)
-        end
-    end
-    walk(ex.tree)
-
-    missing = max(0, {total_vars} - length(used))
-    return L(base + {coeff} * missing)
-end
-"""
-        penalty_code_v2 = lambda total_vars, coeff: fr"""
+        penalty_loss_julia = lambda total_vars, coeff: fr"""
  function feature_absent_penalty(ex, dataset::Dataset{{T,L}}, options) where {{T,L}}
     # Base MSE
     pred, ok = eval_tree_array(ex, dataset.X, options)
@@ -79,8 +51,7 @@ end
     # Count distinct variables
     total_vars = {total_vars}
     used = sizehint!(Set{{Int}}(), total_vars)
-    # foreach(ex) do node  # faster version of 'for node in ex'\
-    for node in ex 
+    foreach(ex.tree) do node  # faster version of 'for node in ex'\
         if node.degree == 0 && !node.constant
             push!(used, node.feature)
         end
@@ -90,7 +61,8 @@ end
     return L(base + {coeff} * miss)
 end
 """
-        params = {**params, "loss_function_expression": penalty_code(X.shape[1], coeff)}
+
+        params = {**params, "loss_function_expression": penalty_loss_julia(X.shape[1], coeff)}
 
     model = PySRRegressor(**params)
     model.fit(X, y, variable_names=variable_names)
