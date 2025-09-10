@@ -316,23 +316,72 @@ Retrieves the names of ordinal and nominal variables.
 
 #### CausalEffectMethod
 
-**`CausalEffectMethod`** configures the methods used for estimating causal effects.
+**`CausalEffectMethod`** is the base configuration for estimating causal
+effects. Users may instantiate this class directly with a name and an optional
+dictionary of parameters. When used this way, **CausalPipe** automatically
+converts the instance into one of the specialised subclasses below.
 
 - **Attributes:**
-    - `name` (`CausalEffectMethodNameEnum`, default `CausalEffectMethodNameEnum.PEARSON`): Name of the causal effect estimation method.
-      - **Options:**
-        - `'pearson'`: Partial Pearson Correlation
-        - `'spearman'`: Partial Spearman Correlation
-        - `'mi'`: Conditional Mutual Information
-        - `'kci'`: Kernel Conditional Independence
-        - `'sem'`: Structural Equation Modeling
-        - `'sem-climbing'`: Structural Equation Modeling with Hill Climbing search of the best graph.
-    - `directed` (`bool`, default `True`): Indicates if the method uses a directed graph.
-    - `params` (`Optional[Dict[str, Any]]`, default `{}`): Additional parameters for the method.
-    - `bootstrap_resamples` (`int`, default `0`): Number of bootstrap resamples for SEM hill climbing to estimate edge orientation stability. When greater than `0`, the three bootstrapped graphs with the highest product of edge orientation probabilities are saved under `sem_hc_bootstrap/`.
-    - `bootstrap_random_state` (`Optional[int]`, default `None`): Seed for the SEM hill-climb bootstrap procedure.
+    - `name` (`CausalEffectMethodNameEnum`, default `CausalEffectMethodNameEnum.PEARSON`): Name of the causal effect method.
+    - `directed` (`bool`, default `True`): Whether to use the directed graph.
+    - `params` (`Optional[Dict[str, Any]]`, default `{}`): Legacy parameter dictionary.
+
+#### PearsonCausalEffectMethod
+
+Partial Pearson correlation. No additional parameters besides `directed`.
+
+#### SpearmanCausalEffectMethod
+
+Partial Spearman correlation. No additional parameters besides `directed`.
+
+#### MICausalEffectMethod
+
+Conditional Mutual Information. No additional parameters besides `directed`.
+
+#### KCICausalEffectMethod
+
+Kernel Conditional Independence. No additional parameters besides `directed`.
+
+#### SEMCausalEffectMethod
+
+Structural Equation Modeling.
+
+- **Parameters:**
+    - `estimator` (`Optional[str]`, default `None`): Estimator passed to the SEM fitting routine. If `None`, an appropriate default is selected.
+
+#### SEMClimbingCausalEffectMethod
+
+Structural Equation Modeling with Hill Climbing search.
+
+- **Parameters:**
+    - `estimator` (`Optional[str]`, default `None`)
+    - `respect_pag` (`bool`, default `True`)
+    - `finalize_with_resid_covariances` (`bool`, default `False`)
+    - `max_iter` (`int`, default `100`)
+    - `mi_cutoff` (`float`, default `10.0`)
+    - `sepc_cutoff` (`float`, default `0.10`)
+    - `max_add` (`int`, default `5`)
+    - `delta_stop` (`float`, default `0.003`)
+    - `whitelist_pairs` (`Optional[List[Tuple[str, str]]]`, default `None`)
+    - `forbid_pairs` (`Optional[List[Tuple[str, str]]]`, default `None`)
+    - `same_occasion_regex` (`Optional[str]`, default `None`)
+
+#### PYSRCausalEffectMethod
+
+Symbolic regression using PySR.
+
+- **Parameters:**
+    - `noise_kind` (`str`, default `"gaussian"`)
+    - `alpha` (`float`, default `0.3`)
+    - `tol` (`float`, default `1e-6`)
+    - `max_iter` (`int`, default `500`)
+    - `restarts` (`int`, default `2`)
+    - `standardized_init` (`bool`, default `False`)
+    - `hc_orient_undirected_edges` (`bool`, default `True`)
+    - `pysr_params` (`Dict[str, Any]`, default `{}`)
 
 ---
+
 
 ### SEMScore
 

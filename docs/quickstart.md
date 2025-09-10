@@ -16,7 +16,7 @@ from causal_pipe.pipe_config import (
     VariableTypes,
     FASSkeletonMethod,
     FCIOrientationMethod,
-    CausalEffectMethod,
+    PearsonCausalEffectMethod,
 )
 
 from causal_pipe import CausalPipe
@@ -45,7 +45,7 @@ config = CausalPipeConfig(
     preprocessing_params=preprocessor_params,
     skeleton_method=FASSkeletonMethod(),
     orientation_method=FCIOrientationMethod(),
-    causal_effect_methods=[CausalEffectMethod(name="pearson")],
+    causal_effect_methods=[PearsonCausalEffectMethod()],
     study_name="causal_analysis",
     output_path="./output",
     show_plots=True,
