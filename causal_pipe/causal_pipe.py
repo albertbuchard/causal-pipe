@@ -4,6 +4,7 @@ import traceback
 import warnings
 from typing import Optional, Dict, Any, Tuple, List, Set
 
+import numpy as np
 import pandas as pd
 from bcsl.bcsl import BCSL
 from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
@@ -37,6 +38,7 @@ from causal_pipe.utilities.graph_utilities import (
 )
 from causal_pipe.utilities.plot_utilities import plot_correlation_graph
 from causal_pipe.pysr_regression import symbolic_regression_causal_effect
+from causal_pipe.cyclic_scm import CyclicSCMSimulator
 from .pipe_config import (
     CausalPipeConfig,
     FASSkeletonMethod,
@@ -762,6 +764,14 @@ class CausalPipe:
                         else self.undirected_graph
                     )
                     pysr_params = dict(method.params or {})
+                    noise_kind = pysr_params.pop("noise_kind", "gaussian")
+                    alpha = pysr_params.pop("alpha", 0.3)
+                    tol = pysr_params.pop("tol", 1e-6)
+                    max_iter = pysr_params.pop("max_iter", 500)
+                    restarts = pysr_params.pop("restarts", 2)
+                    standardized_init = pysr_params.pop(
+                        "standardized_init", False
+                    )
                     hc_orient = pysr_params.pop("hc_orient_undirected_edges", True)
                     pysr_params["output_directory"] = os.path.join(out_dir, "pysr_output")
                     pysr_params["random_state"] = self.seed
@@ -795,6 +805,38 @@ class CausalPipe:
                         output_path=os.path.join(
                             out_dir, "pysr_scm_with_equations.png"
                         ),
+                    )
+                    simulator = CyclicSCMSimulator(
+                        structural_equations=self.causal_effects[method.name][
+                            "structural_equations"
+                        ],
+                        undirected_graph=self.undirected_graph,
+                        df_columns=list(df.columns),
+                        seed=self.seed,
+                    )
+                    residuals, Omega, resid_rows = simulator.estimate_noise(
+                        df, out_dir
+                    )
+                    sim_data, solver_stats = simulator.simulate(
+                        df,
+                        Omega=Omega,
+                        resid_rows=resid_rows,
+                        out_dir=out_dir,
+                        noise_kind=noise_kind,
+                        alpha=alpha,
+                        tol=tol,
+                        max_iter=max_iter,
+                        restarts=restarts,
+                        standardized_init=standardized_init,
+                    )
+                    fit_measures = simulator.compute_fit_measures(
+                        df, sim_data, residuals, solver_stats
+                    )
+                    self.causal_effects[method.name][
+                        "fit_measures"
+                    ] = fit_measures
+                    dump_json_to(
+                        fit_measures, os.path.join(out_dir, "fit_measures.json")
                     )
                 else:
                         raise ValueError(
