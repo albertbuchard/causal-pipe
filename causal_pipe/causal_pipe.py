@@ -727,13 +727,6 @@ class CausalPipe:
                         estimator=est,
                         ordered=ordered,
                         finalize_with_resid_covariances=finalize_with_resid_covariances,
-                        mi_cutoff=method.mi_cutoff,
-                        sepc_cutoff=method.sepc_cutoff,
-                        max_add=method.max_add,
-                        delta_stop=method.delta_stop,
-                        whitelist_pairs=method.whitelist_pairs,
-                        forbid_pairs=method.forbid_pairs,
-                        same_occasion_regex=method.same_occasion_regex,
                         respect_pag=respect_pag,
                     )
                     self.causal_effects[method.name] = {
@@ -835,15 +828,17 @@ class CausalPipe:
                                   "graph for future CE estimation.")
                             self.directed_graph = best_graph
                     else:
-                        self.causal_effects[method.name] = symbolic_regression_causal_effect(
+                        pysr_fitter_output = symbolic_regression_causal_effect(
                             df,
                             graph,
                             pysr_params=pysr_params,
                         )
+                        self.causal_effects[method.name] = {
+                            "final_graph": pysr_fitter_output.final_graph,
+                            "structural_equations": pysr_fitter_output.structural_equations,
+                        }
                         simulator = CyclicSCMSimulator(
-                            structural_equations=self.causal_effects[method.name][
-                                "structural_equations"
-                            ],
+                            structural_equations=pysr_fitter_output.structural_equations,
                             undirected_graph=self.undirected_graph,
                             df_columns=list(df.columns),
                             seed=self.seed,

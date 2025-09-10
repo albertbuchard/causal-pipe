@@ -48,18 +48,28 @@ if __name__ == "__main__":
             # Simple pearson/spearman partial correlation
             # PearsonCausalEffectMethod(),
             # SpearmanCausalEffectMethod(),
-            # SEMClimbingCausalEffectMethod(estimator="MLR",
-            #                               respect_pag=True,
-            #                               finalize_with_resid_covariances=False),
+            SEMClimbingCausalEffectMethod(estimator="ML",
+                                          respect_pag=True,
+                                          chain_orientation=True, # Next Causal Effect Method will use the best graph found here
+                                          finalize_with_resid_covariances=False),
             # PySR-based Causal Effect estimation
-            PYSRCausalEffectMethodHillClimbing()
+            PYSRCausalEffectMethod(
+                pysr_params={
+                    "niterations": 100,
+                    "population_size": 100,
+                    "maxsize": 10,
+                    "binary_operators": ["+", "-", "*", "/"],
+                    "unary_operators": ["exp", "log", "sin", "cos", "inv"],
+                },
+            )
+            # PYSRCausalEffectMethodHillClimbing()
         ],
         study_name="pipe_super_basic_dataset",
         output_path="./output/",
         show_plots=False,
         verbose=True,
     )
-    compare_super_basic_dataset(config)
+    # compare_super_basic_dataset(config)
     # compare_easy_dataset(config)
     # compare_easy_dataset_with_ordinal(config)
-    # compare_hard_dataset(config)
+    compare_hard_dataset(config)
