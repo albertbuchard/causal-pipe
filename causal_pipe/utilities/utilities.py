@@ -1,9 +1,10 @@
 import json
 import random
 import warnings
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
+import pandas as pd
 
 
 def dump_json_to(data, path: str):
@@ -41,3 +42,32 @@ def set_seed_python_and_r(seed: Optional[int] = None):
         print(f"Random seed set to {seed}.")
     else:
         print("Random seed is None - using default random initialization.")
+
+
+def nodes_names_from_data(data: pd.DataFrame) -> List[str]:
+    """
+    Extracts node names from the dataset.
+
+    Parameters
+    ----------
+    data : pd.DataFrame or np.ndarray
+        The dataset from which to extract node names.
+
+    Returns
+    -------
+    List[str]
+        A list of variable names.
+
+    Raises
+    ------
+    ValueError
+        If the data type is unsupported.
+    """
+    if isinstance(data, pd.DataFrame):
+        return list(data.columns)
+    elif isinstance(data, np.ndarray):
+        return [f"Var{i}" for i in range(data.shape[1])]
+    else:
+        raise ValueError(
+            "Unsupported data type. Please provide a pandas DataFrame or numpy array."
+        )

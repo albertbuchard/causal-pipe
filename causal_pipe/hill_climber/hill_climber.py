@@ -19,10 +19,12 @@ from causal_pipe.utilities.model_comparison_utilities import (
 )
 
 
-class ScoreFunction(Protocol):
+class ScoreFunction:
     """
     Protocol for a scoring function that evaluates and compares two graph models.
     """
+    def __init__(self, *args, **kwargs):
+        ...
 
     def __call__(
         self, model_1: GeneralGraph, model_2: Optional[GeneralGraph] = None
@@ -33,6 +35,16 @@ class ScoreFunction(Protocol):
         :param model_1: The primary graph model to evaluate.
         :param model_2: An optional secondary graph model for comparison.
         :return: A dictionary containing scoring information, e.g., {'score': float, 'is_better_model': int}.
+        """
+        ...
+
+    def exhaustive_results(self, model_1: GeneralGraph, model_2: Optional[GeneralGraph] = None) -> Dict[str, Any]:
+        """
+        Optionally provide exhaustive scoring results for two graph models.
+
+        :param model_1: The primary graph model to evaluate.
+        :param model_2: An optional secondary graph model for comparison.
+        :return: A dictionary containing detailed scoring information.
         """
         ...
 
@@ -74,6 +86,7 @@ class GraphHillClimber:
         node_names: List[str],
         keep_initially_oriented_edges: bool = True,
         respect_pag: bool = False,
+        name: str = "Hill-Climber",
     ):
         """
         Initialize the HillClimber.
@@ -89,6 +102,7 @@ class GraphHillClimber:
         self.node_names = node_names
         self.keep_initially_oriented_edges = keep_initially_oriented_edges
         self.respect_pag = respect_pag
+        self.name = name
 
     def run(self, initial_graph: GeneralGraph, max_iter: int = 1000) -> GeneralGraph:
         """
@@ -125,9 +139,9 @@ class GraphHillClimber:
 
         # Initialize iteration counter
         iteration = 0
-        print(f"[SEM-Climb] respect_pag={self.respect_pag}")
-        print(f"Hill Climbing started with a maximum of {max_iter} iterations.")
-        print(f"Initial score = {current_score}")
+        print(f"[{self.name}] respect_pag={self.respect_pag}")
+        print(f"[{self.name}] Hill Climbing started with a maximum of {max_iter} iterations.")
+        print(f"[{self.name}] Initial score = {current_score}")
 
         # Initialize list to track undirected edges that should not be modified further
         undirected_edges: List[Tuple[int, int]] = []
@@ -136,8 +150,8 @@ class GraphHillClimber:
         while iteration < max_iter:
             # Provide periodic updates every 100 iterations
             if iteration % 100 == 0:
-                print(f"Iteration {iteration}: Best score = {current_score}")
-                print(f"Current graph: {current_graph}")
+                print(f"[{self.name}] Iteration {iteration}: Best score = {current_score}")
+                print(f"[{self.name}] Current graph: {current_graph}")
 
             # Generate neighboring graphs and the edges that were switched to obtain them
             neighbors, switched_edges = self.get_neighbors_func(
@@ -162,7 +176,7 @@ class GraphHillClimber:
 
                 if not isinstance(neighbor_score_fn_output, dict):
                     raise ValueError(
-                        "The score function must return a dictionary with 'score' key."
+                        f"[{self.name}] The score function must return a dictionary with 'score' key."
                     )
 
                 # Determine if the neighbor is a better model based on the scoring function
@@ -183,7 +197,7 @@ class GraphHillClimber:
 
                         if edge_in_neighbor is None:
                             raise ValueError(
-                                "The edge should be present in the neighbor graph."
+                                f"[{self.name}] The edge should be present in the neighbor graph."
                             )
 
                         # Flags to determine the type of edge modification required
@@ -204,7 +218,7 @@ class GraphHillClimber:
                                 should_switch_neighbour = True
                             else:
                                 raise ValueError(
-                                    "The edge should be directed in the neighbor graph."
+                                    f"[{self.name}] The edge should be directed in the neighbor graph."
                                 )
 
                         # Handle making the edge undirected if applicable
@@ -240,7 +254,7 @@ class GraphHillClimber:
                         # Ensure the score function provided the necessary key
                         if is_better_model_undirected is None:
                             warnings.warn(
-                                "The score function must return a dictionary with 'is_better_model' key."
+                                f"[{self.name}] The score function must return a dictionary with 'is_better_model' key."
                             )
 
                         # If the undirected or switched edge leads to no better model, track it to avoid future modifications
@@ -252,13 +266,13 @@ class GraphHillClimber:
                             undirected_edges.append(edge_node_idx)
                 else:
                     raise ValueError(
-                        "The score function must return a dictionary with 'is_better_model' key."
+                        f"[{self.name}] The score function must return a dictionary with 'is_better_model' key."
                     )
 
             # If no better neighbor is found, terminate the hill-climbing process
             if best_neighbor is None:
                 print(
-                    f"Iteration {iteration}: No better neighbor found. Stopping. Best score = {current_score}"
+                    f"[{self.name}] Iteration {iteration}: No better neighbor found. Stopping. Best score = {current_score}"
                 )
                 break
 
@@ -275,7 +289,7 @@ class GraphHillClimber:
             # Notify if the maximum number of iterations is reached without convergence
             if iteration == max_iter:
                 print(
-                    f"Max iteration reached without convergence. Best score = {current_score}"
+                    f"[{self.name}] Max iteration reached without convergence. Best score = {current_score}"
                 )
 
         optimized_graph = (

@@ -7,7 +7,7 @@ from sympy import lambdify, sympify
 from scipy.stats import ks_2samp
 from causallearn.graph.GeneralGraph import GeneralGraph
 
-from .utilities.utilities import dump_json_to
+from causal_pipe.utilities.utilities import dump_json_to
 
 
 class CyclicSCMSimulator:

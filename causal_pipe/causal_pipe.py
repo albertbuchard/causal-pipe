@@ -4,7 +4,6 @@ import traceback
 import warnings
 from typing import Optional, Dict, Any, Tuple, List, Set
 
-import numpy as np
 import pandas as pd
 from bcsl.bcsl import BCSL
 from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
@@ -37,8 +36,8 @@ from causal_pipe.utilities.graph_utilities import (
     add_edge_probabilities_to_graph, add_psyr_structural_equation_to_edge_coefficients,
 )
 from causal_pipe.utilities.plot_utilities import plot_correlation_graph
-from causal_pipe.pysr_regression import symbolic_regression_causal_effect
-from causal_pipe.cyclic_scm import CyclicSCMSimulator
+from causal_pipe.pysr.pysr_regression import symbolic_regression_causal_effect
+from causal_pipe.pysr.cyclic_scm import CyclicSCMSimulator
 from .pipe_config import (
     CausalPipeConfig,
     FASSkeletonMethod,
@@ -57,7 +56,6 @@ from .pipe_config import (
     PYSRCausalEffectMethod,
 )
 from .utilities.utilities import dump_json_to, set_seed_python_and_r
-from .utilities.visualize_pysr_scm import graph_with_pysr_scm
 
 
 class CausalPipe:
@@ -815,23 +813,20 @@ class CausalPipe:
                     )
                     pysr_params = dict(method.pysr_params)
                     pysr_params["output_directory"] = os.path.join(out_dir, "pysr_output")
-                    pysr_params["random_state"] = self.seed
-                    self.causal_effects[method.name] = symbolic_regression_causal_effect(
-                        df,
-                        graph,
-                        pysr_params=pysr_params,
-                        hc_orient_undirected_edges=method.hc_orient_undirected_edges,
-                    )
+                    if method.hc_orient_undirected_edges:
+                        # Run Hill Climbing
+                        # pysr_score = PYSRScorer()
+                        raise NotImplementedError()
+                    else:
+                        self.causal_effects[method.name] = symbolic_regression_causal_effect(
+                            df,
+                            graph,
+                            pysr_params=pysr_params,
+                        )
                     dump_json_to(
                         data=self.causal_effects[method.name],
                         path=os.path.join(out_dir, f"{method.name}_results.json"),
                     )
-                    # graph = graph_with_pysr_scm(
-                    #     self.causal_effects[method.name],
-                    #     title="PySR SCM Result",
-                    #     show=show_plot,
-                    #     output_path=os.path.join(out_dir, "pysr_scm.png"),
-                    # )
                     coef_graph, edges, structural_equations = (
                         add_psyr_structural_equation_to_edge_coefficients(
                             psyr_output=self.causal_effects[method.name],

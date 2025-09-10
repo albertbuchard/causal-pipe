@@ -40,7 +40,6 @@ bcsl_graph_utils.get_bidirected_edge = (
 )
 sys.modules["bcsl.graph_utils"] = bcsl_graph_utils
 
-import pytest
 import types
 
 # Stub out heavy dependencies from causallearn and bcsl.graph_utils
@@ -182,9 +181,9 @@ from causallearn.graph.Endpoint import Endpoint
 import causal_pipe.utilities.graph_utilities as graph_utils
 importlib.reload(graph_utils)
 from causal_pipe.utilities.graph_utilities import get_neighbors_general_graph
-import causal_pipe.sem.hill_climber as hill_climber
+import causal_pipe.hill_climber.hill_climber as hill_climber
 importlib.reload(hill_climber)
-from causal_pipe.sem.hill_climber import GraphHillClimber
+from causal_pipe.hill_climber.hill_climber import GraphHillClimber
 from causal_pipe.utilities.model_comparison_utilities import NO_BETTER_MODEL
 
 

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
 
-from causal_pipe.sem.hill_climber import GraphHillClimber
+from causal_pipe.hill_climber.hill_climber import GraphHillClimber, ScoreFunction
 from causal_pipe.utilities.graph_utilities import (
     dataframe_to_json_compatible_list,
     general_graph_to_sem_model,
@@ -17,8 +17,7 @@ from causal_pipe.utilities.model_comparison_utilities import (
     BETTER_MODEL_2,
     NO_BETTER_MODEL,
 )
-
-
+from causal_pipe.utilities.utilities import nodes_names_from_data
 
 
 def format_ordered_for_sem(data: pd.DataFrame, ordered: List[str]) -> pd.DataFrame:
@@ -688,7 +687,7 @@ def fit_sem_lavaan(
     return results
 
 
-class SEMScore:
+class SEMScore(ScoreFunction):
     def __init__(
         self,
         data: pd.DataFrame,
@@ -715,6 +714,7 @@ class SEMScore:
         ordered : Optional[List[str]], optional
             A list of variable names that are ordered (ordinal variables).
         """
+        super().__init__()
         self.data = data
         self.var_names = var_names
         if var_names is None:
@@ -735,17 +735,17 @@ class SEMScore:
 
     def __call__(
         self,
-        general_graph: GeneralGraph,
-        compared_to_graph: Optional[GeneralGraph] = None,
+        model_1: GeneralGraph,
+        model_2: Optional[GeneralGraph] = None,
     ) -> Dict[str, Any]:
         """
         Calculates the score of the given graph based on BIC from SEM fitting.
 
         Parameters
         ----------
-        general_graph : GeneralGraph
+        model_1 : GeneralGraph
             The graph to score.
-        compared_to_graph : Optional[GeneralGraph], optional
+        model_2 : Optional[GeneralGraph], optional
             The graph to compare the given graph against.
 
         Returns
@@ -754,7 +754,7 @@ class SEMScore:
             A dictionary containing the score and additional SEM fitting results.
         """
         results = self.exhaustive_results(
-            general_graph, compared_to_graph=compared_to_graph
+            model_1, model_2=model_2
         )
 
         if not results:
@@ -802,8 +802,8 @@ class SEMScore:
 
     def exhaustive_results(
         self,
-        general_graph: GeneralGraph,
-        compared_to_graph: Optional[GeneralGraph] = None,
+        model_1: GeneralGraph,
+        model_2: Optional[GeneralGraph] = None,
         exogenous_residual_covariances: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -811,9 +811,9 @@ class SEMScore:
 
         Parameters
         ----------
-        general_graph : GeneralGraph
+        model_1 : GeneralGraph
             The graph structure to fit.
-        compared_to_graph : Optional[GeneralGraph], optional
+        model_2 : Optional[GeneralGraph], optional
             The graph structure to compare the given graph against.
 
         Returns
@@ -822,12 +822,12 @@ class SEMScore:
             A dictionary containing the SEM fitting results.
         """
         # Convert the graph to a SEM model string
-        model_str, exogenous_vars = general_graph_to_sem_model(general_graph)
+        model_str, exogenous_vars = general_graph_to_sem_model(model_1)
 
         compare_model_string = None
-        if compared_to_graph is not None:
+        if model_2 is not None:
             compare_model_string, compare_exogenous_vars = general_graph_to_sem_model(
-                compared_to_graph
+                model_2
             )
             exogenous_vars = list(set(exogenous_vars + compare_exogenous_vars))
 
@@ -856,39 +856,6 @@ class SEMScore:
         return results
 
 
-def nodes_names_from_data(data: pd.DataFrame) -> List[str]:
-    """
-    Extracts node names from the dataset.
-
-    Parameters
-    ----------
-    data : pd.DataFrame or np.ndarray
-        The dataset from which to extract node names.
-
-    Returns
-    -------
-    List[str]
-        A list of variable names.
-
-    Raises
-    ------
-    ValueError
-        If the data type is unsupported.
-    """
-    if isinstance(data, pd.DataFrame):
-        return list(data.columns)
-    elif isinstance(data, np.ndarray):
-        return [f"Var{i}" for i in range(data.shape[1])]
-    else:
-        raise ValueError(
-            "Unsupported data type. Please provide a pandas DataFrame or numpy array."
-        )
-
-
-# --- Multiprocessing helpers -------------------------------------------------
-
-
-
 def search_best_graph_climber(
     data: pd.DataFrame,
     *,
@@ -897,13 +864,6 @@ def search_best_graph_climber(
     max_iter: int = 1000,
     estimator: str = "MLM",
     finalize_with_resid_covariances: bool = False,
-    mi_cutoff: float = 10.0,
-    sepc_cutoff: float = 0.10,
-    max_add: int = 5,
-    delta_stop: float = 0.003,
-    whitelist_pairs: Optional[pd.DataFrame] = None,
-    forbid_pairs: Optional[pd.DataFrame] = None,
-    same_occasion_regex: Optional[str] = None,
     ordered: Optional[List[str]] = None,
     respect_pag: bool = True,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
@@ -954,11 +914,11 @@ def search_best_graph_climber(
         node_names=node_names,
         keep_initially_oriented_edges=True,
         respect_pag=respect_pag,
+        name="SEM Hill Climber",
     )
 
     # Run hill-climbing starting from the initial graph
     initial_graph_copy = copy.deepcopy(initial_graph)
-    best_score = {}
     best_graph = hill_climber.run(initial_graph=initial_graph_copy, max_iter=max_iter)
     best_score = sem_score.exhaustive_results(best_graph)
     baseline_score = best_score.copy()
@@ -970,24 +930,6 @@ def search_best_graph_climber(
         # Preserve the original score before any augmentation
         best_score["without_added_covariance_score"] = baseline_score
         augmented = sem_score.exhaustive_results(best_graph, exogenous_residual_covariances=True)
-        # model_str, _exog = general_graph_to_sem_model(best_graph)
-        # from causal_pipe.sem.resid_covariance_augmentation import (
-        #     augment_residual_covariances_stepwise,
-        # )
-        #
-        # augmented = augment_residual_covariances_stepwise(
-        #     data=data,
-        #     model_string=model_str,
-        #     estimator=estimator,
-        #     max_add=max_add,
-        #     mi_cutoff=mi_cutoff,
-        #     sepc_cutoff=sepc_cutoff,
-        #     delta_stop=delta_stop,
-        #     whitelist_pairs=whitelist_pairs,
-        #     forbid_pairs=forbid_pairs,
-        #     same_occasion_regex=same_occasion_regex,
-        #     verbose=True,
-        # )
 
         best_score["resid_cov_aug"] = augmented
 
