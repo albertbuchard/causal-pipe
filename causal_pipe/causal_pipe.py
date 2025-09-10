@@ -741,6 +741,10 @@ class CausalPipe:
                         "summary": sem_results,
                         "resid_cov_aug": sem_results.get("resid_cov_aug"),
                     }
+                    if method.chain_orientation:
+                        print("[Causal Pipe] Chain Orientation - Saving best graph from SEM Climber as directed graph "
+                              "for future CE estimation.")
+                        self.directed_graph = best_graph
 
                     print("Saving results to output directory.")
                     out_sem_dir = os.path.join(
@@ -826,6 +830,10 @@ class CausalPipe:
                             "structural_equations": best_score.get("structural_equations"),
                             "fit_measures": best_score.get("fit_measures"),
                         }
+                        if method.chain_orientation:
+                            print("[Causal Pipe] Chain Orientation - Saving best graph from Hill Climbing as directed "
+                                  "graph for future CE estimation.")
+                            self.directed_graph = best_graph
                     else:
                         self.causal_effects[method.name] = symbolic_regression_causal_effect(
                             df,
