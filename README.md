@@ -71,7 +71,8 @@ from causal_pipe.pipe_config import (
     VariableTypes,
     FASSkeletonMethod,
     FCIOrientationMethod,
-    CausalEffectMethod,
+    PearsonCausalEffectMethod,
+    SEMCausalEffectMethod,
 )
 
 # Define preprocessing parameters
@@ -100,7 +101,7 @@ config = CausalPipeConfig(
     preprocessing_params=preprocessor_params,
     skeleton_method=FASSkeletonMethod(),
     orientation_method=FCIOrientationMethod(),
-    causal_effect_methods=[CausalEffectMethod(name="pearson")],
+    causal_effect_methods=[PearsonCausalEffectMethod()],
     study_name="causal_analysis",
     output_path="./output",
     show_plots=True,
@@ -198,8 +199,8 @@ config = CausalPipeConfig(
         multiple_comparison_correction="fdr",
     ),
     causal_effect_methods=[
-        CausalEffectMethod(name="sem"),
-        CausalEffectMethod(name="pearson"),
+        SEMCausalEffectMethod(),
+        PearsonCausalEffectMethod(),
     ],
     study_name="custom_causal_analysis",
     output_path="./output/custom_analysis",

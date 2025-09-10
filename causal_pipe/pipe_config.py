@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 from pydantic import (
     BaseModel,
@@ -294,6 +294,68 @@ class CausalEffectMethod(BaseModel):
     name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
     directed: bool = True
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+
+class PearsonCausalEffectMethod(CausalEffectMethod):
+    """Partial Pearson correlation."""
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
+
+
+class SpearmanCausalEffectMethod(CausalEffectMethod):
+    """Partial Spearman correlation."""
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.SPEARMAN
+
+
+class MICausalEffectMethod(CausalEffectMethod):
+    """Conditional Mutual Information."""
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.MI
+
+
+class KCICausalEffectMethod(CausalEffectMethod):
+    """Kernel Conditional Independence."""
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.KCI
+
+
+class SEMCausalEffectMethod(CausalEffectMethod):
+    """Structural Equation Modeling."""
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.SEM
+    estimator: Optional[str] = None
+
+
+class SEMClimbingCausalEffectMethod(CausalEffectMethod):
+    """Structural Equation Modeling with Hill Climbing search."""
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.SEM_CLIMBING
+    estimator: Optional[str] = None
+    respect_pag: bool = True
+    finalize_with_resid_covariances: bool = False
+    max_iter: int = 100
+    mi_cutoff: float = 10.0
+    sepc_cutoff: float = 0.10
+    max_add: int = 5
+    delta_stop: float = 0.003
+    whitelist_pairs: Optional[List[Tuple[str, str]]] = None
+    forbid_pairs: Optional[List[Tuple[str, str]]] = None
+    same_occasion_regex: Optional[str] = None
+
+
+class PYSRCausalEffectMethod(CausalEffectMethod):
+    """Symbolic regression using PySR."""
+
+    name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PYSR
+    noise_kind: str = "gaussian"
+    alpha: float = 0.3
+    tol: float = 1e-6
+    max_iter: int = 500
+    restarts: int = 2
+    standardized_init: bool = False
+    hc_orient_undirected_edges: bool = True
+    pysr_params: Dict[str, Any] = Field(default_factory=dict)
 
 
 class CausalPipeConfig(BaseModel):

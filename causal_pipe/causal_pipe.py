@@ -45,7 +45,16 @@ from .pipe_config import (
     BCSLSkeletonMethod,
     FCIOrientationMethod,
     HillClimbingOrientationMethod,
-    VariableTypes, CausalEffectMethodNameEnum,
+    VariableTypes,
+    CausalEffectMethodNameEnum,
+    CausalEffectMethod,
+    PearsonCausalEffectMethod,
+    SpearmanCausalEffectMethod,
+    MICausalEffectMethod,
+    KCICausalEffectMethod,
+    SEMCausalEffectMethod,
+    SEMClimbingCausalEffectMethod,
+    PYSRCausalEffectMethod,
 )
 from .utilities.utilities import dump_json_to, set_seed_python_and_r
 from .utilities.visualize_pysr_scm import graph_with_pysr_scm
@@ -84,7 +93,10 @@ class CausalPipe:
         self.preprocessing_params = config.preprocessing_params
         self.skeleton_method = config.skeleton_method
         self.orientation_method = config.orientation_method
-        self.causal_effect_methods = config.causal_effect_methods
+        self.causal_effect_methods = [
+            self._convert_causal_effect_method(m)
+            for m in (config.causal_effect_methods or [])
+        ]
 
         # General settings
         self.show_plots = config.show_plots
@@ -109,6 +121,43 @@ class CausalPipe:
         self.sepsets: Dict[Tuple[int, int], Set[int]] = {}
         self.directed_graph: Optional[GeneralGraph] = None
         self.causal_effects: Dict[str, Any] = {}
+
+    def _convert_causal_effect_method(self, method: CausalEffectMethod) -> CausalEffectMethod:
+        """Convert a generic ``CausalEffectMethod`` into a specific subclass."""
+
+        if method.__class__ is CausalEffectMethod:
+            params = dict(method.params or {})
+            common_args = {"directed": method.directed}
+            if method.name == CausalEffectMethodNameEnum.PEARSON:
+                return PearsonCausalEffectMethod(**common_args)
+            if method.name == CausalEffectMethodNameEnum.SPEARMAN:
+                return SpearmanCausalEffectMethod(**common_args)
+            if method.name == CausalEffectMethodNameEnum.MI:
+                return MICausalEffectMethod(**common_args)
+            if method.name == CausalEffectMethodNameEnum.KCI:
+                return KCICausalEffectMethod(**common_args)
+            if method.name == CausalEffectMethodNameEnum.SEM:
+                return SEMCausalEffectMethod(**common_args, **params)
+            if method.name == CausalEffectMethodNameEnum.SEM_CLIMBING:
+                return SEMClimbingCausalEffectMethod(**common_args, **params)
+            if method.name == CausalEffectMethodNameEnum.PYSR:
+                known = {
+                    k: params.pop(k)
+                    for k in [
+                        "noise_kind",
+                        "alpha",
+                        "tol",
+                        "max_iter",
+                        "restarts",
+                        "standardized_init",
+                        "hc_orient_undirected_edges",
+                    ]
+                    if k in params
+                }
+                return PYSRCausalEffectMethod(
+                    **common_args, pysr_params=params, **known
+                )
+        return method
 
     def _setup_logging(self):
         """
@@ -604,7 +653,7 @@ class CausalPipe:
                         data=self.causal_effects[method.name],
                         path=os.path.join(out_dir, f"{method.name}_results.json"),
                     )
-                elif method.name == "sem":
+                elif isinstance(method, SEMCausalEffectMethod):
                     # Structural Equation Modeling
                     directed_graph = unify_edge_types_directed_undirected(
                         self.directed_graph
@@ -618,11 +667,12 @@ class CausalPipe:
                     if ordered:
                         default_estimator = "WLSMV"
 
+                    estimator = method.estimator or default_estimator
                     self.causal_effects[method.name] = fit_sem_lavaan(
                         df,
                         model_str,
                         var_names=None,
-                        estimator=method.params.get("estimator", default_estimator),
+                        estimator=estimator,
                         ordered=ordered,
                         exogenous_vars_model_1=exogenous_vars,
                     )
@@ -655,7 +705,7 @@ class CausalPipe:
                         data=self.causal_effects[method.name],
                         path=os.path.join(out_sem_dir, "sem_results.json"),
                     )
-                elif method.name == "sem-climbing":
+                elif isinstance(method, SEMClimbingCausalEffectMethod):
                     # Structural Equation Modeling with Hill Climbing
                     ordered = self.get_ordered_variable_names()
                     default_estimator = "ML"
@@ -665,26 +715,26 @@ class CausalPipe:
                         warnings.warn(
                             "Ordered variables detected but not supported by SEM Climber. Using MLR estimator instead."
                         )
-                    est = method.params.get("estimator", default_estimator)
-                    respect_pag = bool(method.params.get("respect_pag", True))
-                    finalize_with_resid_covariances = bool(
-                        method.params.get("finalize_with_resid_covariances", False)
+                    est = method.estimator or default_estimator
+                    respect_pag = method.respect_pag
+                    finalize_with_resid_covariances = (
+                        method.finalize_with_resid_covariances
                     )
                     best_graph, sem_results = search_best_graph_climber(
                         df,
                         initial_graph=self.directed_graph,
                         node_names=list(df.columns),
-                        max_iter=method.params.get("max_iter", 100),
+                        max_iter=method.max_iter,
                         estimator=est,
                         ordered=ordered,
                         finalize_with_resid_covariances=finalize_with_resid_covariances,
-                        mi_cutoff=method.params.get("mi_cutoff", 10.0),
-                        sepc_cutoff=method.params.get("sepc_cutoff", 0.10),
-                        max_add=method.params.get("max_add", 5),
-                        delta_stop=method.params.get("delta_stop", 0.003),
-                        whitelist_pairs=method.params.get("whitelist_pairs"),
-                        forbid_pairs=method.params.get("forbid_pairs"),
-                        same_occasion_regex=method.params.get("same_occasion_regex"),
+                        mi_cutoff=method.mi_cutoff,
+                        sepc_cutoff=method.sepc_cutoff,
+                        max_add=method.max_add,
+                        delta_stop=method.delta_stop,
+                        whitelist_pairs=method.whitelist_pairs,
+                        forbid_pairs=method.forbid_pairs,
+                        same_occasion_regex=method.same_occasion_regex,
                         respect_pag=respect_pag,
                     )
                     self.causal_effects[method.name] = {
@@ -751,7 +801,7 @@ class CausalPipe:
                     )
                     with open(os.path.join(out_sem_dir, "fit_summary.txt"), "w") as f:
                         f.write(f"{sem_results.get('fit_summary')}")
-                elif method.name == CausalEffectMethodNameEnum.PYSR:
+                elif isinstance(method, PYSRCausalEffectMethod):
                     # Output directory for PySR results
                     out_dir = os.path.join(
                         self.output_path, "causal_effect", method.name
@@ -763,23 +813,14 @@ class CausalPipe:
                         if method.directed
                         else self.undirected_graph
                     )
-                    pysr_params = dict(method.params or {})
-                    noise_kind = pysr_params.pop("noise_kind", "gaussian")
-                    alpha = pysr_params.pop("alpha", 0.3)
-                    tol = pysr_params.pop("tol", 1e-6)
-                    max_iter = pysr_params.pop("max_iter", 500)
-                    restarts = pysr_params.pop("restarts", 2)
-                    standardized_init = pysr_params.pop(
-                        "standardized_init", False
-                    )
-                    hc_orient = pysr_params.pop("hc_orient_undirected_edges", True)
+                    pysr_params = dict(method.pysr_params)
                     pysr_params["output_directory"] = os.path.join(out_dir, "pysr_output")
                     pysr_params["random_state"] = self.seed
                     self.causal_effects[method.name] = symbolic_regression_causal_effect(
                         df,
                         graph,
                         pysr_params=pysr_params,
-                        hc_orient_undirected_edges=hc_orient,
+                        hc_orient_undirected_edges=method.hc_orient_undirected_edges,
                     )
                     dump_json_to(
                         data=self.causal_effects[method.name],
@@ -822,12 +863,12 @@ class CausalPipe:
                         Omega=Omega,
                         resid_rows=resid_rows,
                         out_dir=out_dir,
-                        noise_kind=noise_kind,
-                        alpha=alpha,
-                        tol=tol,
-                        max_iter=max_iter,
-                        restarts=restarts,
-                        standardized_init=standardized_init,
+                        noise_kind=method.noise_kind,
+                        alpha=method.alpha,
+                        tol=method.tol,
+                        max_iter=method.max_iter,
+                        restarts=method.restarts,
+                        standardized_init=method.standardized_init,
                     )
                     fit_measures = simulator.compute_fit_measures(
                         df, sim_data, residuals, solver_stats
@@ -839,9 +880,9 @@ class CausalPipe:
                         fit_measures, os.path.join(out_dir, "fit_measures.json")
                     )
                 else:
-                        raise ValueError(
-                            f"Unsupported causal effect estimation method: {method.name}"
-                        )
+                    raise ValueError(
+                        f"Unsupported causal effect estimation method: {method.name}"
+                    )
 
             print("Causal effect estimation completed.")
             return self.causal_effects
