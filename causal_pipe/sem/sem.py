@@ -7,6 +7,7 @@ import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
 
 from causal_pipe.hill_climber.hill_climber import GraphHillClimber, ScoreFunction
+from causal_pipe.pipe_config import SEMEstimatorEnum
 from causal_pipe.utilities.graph_utilities import (
     dataframe_to_json_compatible_list,
     general_graph_to_sem_model,
@@ -692,7 +693,7 @@ class SEMScore(ScoreFunction):
         self,
         data: pd.DataFrame,
         var_names: Optional[Dict[str, str]] = None,
-        estimator: str = "MLR",
+        estimator: SEMEstimatorEnum = "MLR",
         return_metrics: bool = False,
         ordered: Optional[List[str]] = None,
     ):

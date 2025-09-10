@@ -6,7 +6,9 @@ from causal_pipe.causal_pipe import (
 from causal_pipe.pipe_config import (
     VariableTypes,
     DataPreprocessingParams,
-    CausalEffectMethod, CausalEffectMethodNameEnum, PYSRCausalEffectMethod,
+    CausalEffectMethod, CausalEffectMethodNameEnum, PYSRCausalEffectMethod, PearsonCausalEffectMethod,
+    SEMCausalEffectMethod, SEMClimbingCausalEffectMethod, SpearmanCausalEffectMethod,
+    PYSRCausalEffectMethodHillClimbing,
 )
 from examples.easy import compare_easy_dataset
 from examples.easy_ordinal import compare_easy_dataset_with_ordinal
@@ -39,26 +41,18 @@ if __name__ == "__main__":
         ),
         orientation_method=FCIOrientationMethod(),
         causal_effect_methods=[
-            # Best method - Respect FCI Edge Directions - No Climbing
-            CausalEffectMethod(name=CausalEffectMethodNameEnum.SEM, directed=True, params={"estimator": "MLR"}),
+            # ML SEM - Respect Partial Ancestor Graph - No Climbing
+            SEMCausalEffectMethod(estimator="ML", respect_pag=True),
             # For ordinal data
-            # CausalEffectMethod(
-            #     name="sem", directed=True, params={"estimator": "WLSMV"}
-            # ),
+            # SEMCausalEffectMethod(estimator="WLSMV"),
             # Simple pearson/spearman partial correlation
-            CausalEffectMethod(name=CausalEffectMethodNameEnum.PEARSON, directed=True),
-            # CausalEffectMethod(name="spearman", directed=True),
-            # SEM Climbing, only ML based estimators are supported
-            # CausalEffectMethod(
-            #     name="sem-climbing", directed=True, params={"estimator": "ML",
-            #                                                 "respect_pag": True,
-            #                                                 "finalize_with_resid_covariances": True}
-            # ),
-            # CausalEffectMethod(
-            #     name=CausalEffectMethodNameEnum.SEM_CLIMBING, directed=True, params={"estimator": "MLR", "respect_pag": True}
-            # ),
+            PearsonCausalEffectMethod(),
+            # SpearmanCausalEffectMethod(),
+            SEMClimbingCausalEffectMethod(estimator="MLR",
+                                          respect_pag=True,
+                                          finalize_with_resid_covariances=False),
             # PySR-based Causal Effect estimation
-            PYSRCausalEffectMethod(hc_orient_undirected_edges=False)
+            PYSRCausalEffectMethodHillClimbing()
         ],
         study_name="pipe_super_basic_dataset",
         output_path="./output/",

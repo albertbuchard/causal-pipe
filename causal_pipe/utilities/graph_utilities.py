@@ -798,7 +798,8 @@ def add_edge_coefficients_from_sem_fit(
 
 
 def add_psyr_structural_equation_to_edge_coefficients(
-    psyr_output: Dict[str, Any],
+    final_graph: GeneralGraph,
+    structural_equations: Dict[str, Dict],
 ) -> Tuple[GeneralGraph, List[Edge], Dict[str, str]]:
     """
     Extract structural equations from PySR output.
@@ -814,12 +815,6 @@ def add_psyr_structural_equation_to_edge_coefficients(
         A copy of the final graph, its edges and a mapping from node name to
         its structural equation string.
     """
-    final_graph = psyr_output.get("final_graph")
-    if final_graph is None:
-        raise ValueError("No final_graph in psyr_output.")
-    structural_equations = psyr_output.get("structural_equations", {})
-    if not structural_equations:
-        raise ValueError("No structural_equations in psyr_output.")
 
     coef_graph = copy_graph(final_graph)
     edges: List[Edge] = coef_graph.get_graph_edges()

@@ -8,11 +8,12 @@ import pandas as pd
 from causallearn.graph import GeneralGraph
 
 from causal_pipe.hill_climber.hill_climber import ScoreFunction, GraphHillClimber
+from causal_pipe.pysr.pysr_helpers import SimulatorConfig, fit_simulate_and_score
 from causal_pipe.pysr.pysr_regression import symbolic_regression_causal_effect
 from causal_pipe.pysr.pysr_utilities import PySRFitterType
 from causal_pipe.utilities.graph_utilities import get_neighbors_general_graph
 from causal_pipe.utilities.utilities import nodes_names_from_data
-from causal_pipe.utilities.model_comparison_utilities import NO_BETTER_MODEL
+from causal_pipe.utilities.model_comparison_utilities import NO_BETTER_MODEL, BETTER_MODEL_1, BETTER_MODEL_2
 
 
 class PySREstimatorEnum(str, Enum):
@@ -134,26 +135,75 @@ class PySRScore(ScoreFunction):
         self,
         model_1: GeneralGraph,
         model_2: Optional[GeneralGraph] = None,
-        exogenous_residual_covariances: bool = False,
+        exogenous_residual_covariances: bool = False,  # kept for API symmetry
     ) -> Dict[str, Any]:
         """
-        Fits an PySR Cyclic SCM to the data and returns the fitting results.
-
-        Parameters
-        ----------
-        model_1 : GeneralGraph
-            The graph structure to fit.
-        model_2 : Optional[GeneralGraph], optional
-            The graph structure to compare the given graph against.
-
-        Returns
-        -------
-        Dict[str, Any]
-            A dictionary containing the fitting results and metrics.
+        Fit PySR equations for model_1 (and optionally model_2), simulate, and
+        compute diagnostics + the requested estimator (pseudolikelihood or mmd^2).
         """
-        # Convert the graph to a SEM model string
-        results = None
+        # Ensure DataFrame with proper column order
+        if isinstance(self.data, pd.DataFrame):
+            df = self.data[self.var_names].copy()
+        else:
+            df = pd.DataFrame(self.data, columns=self.var_names)
 
+        sim_cfg = SimulatorConfig(
+            noise_kind="gaussian",  # use 'bootstrap' if you want empirical tails
+            alpha=0.3, tol=1e-6, max_iter=500, restarts=2,
+            standardized_init=False, seed=0, out_dir="."
+        )
+
+        # Model 1
+        _, diag1, meta1 = fit_simulate_and_score(
+            df=df,
+            graph=model_1,
+            fitter=self.fitter or symbolic_regression_causal_effect,
+            pysr_params=self.pysr_params or {},
+            sim_cfg=sim_cfg,
+        )
+
+        results = {
+            "fit_measures": diag1,
+            "structural_equations": meta1["structural_equations"],
+            "solver": meta1["solver"],
+            "is_better_model": NO_BETTER_MODEL,
+            "comparison_results": None,
+        }
+
+        if model_2 is None:
+            return results
+
+        # Model 2 (comparison)
+        _, diag2, meta2 = fit_simulate_and_score(
+            df=df,
+            graph=model_2,
+            fitter=self.fitter or symbolic_regression_causal_effect,
+            pysr_params=self.pysr_params or {},
+            sim_cfg=sim_cfg,
+        )
+
+        # Decide which is better per estimator
+        if self.estimator == PySREstimatorEnum.PSEUDOLIKELIHOOD:
+            s1 = diag1["pseudolikelihood"]
+            s2 = diag2["pseudolikelihood"]
+            is_better = BETTER_MODEL_1 if s1 > s2 else BETTER_MODEL_2 if s2 > s1 else NO_BETTER_MODEL
+            comp = {"model_1_pseudolikelihood": s1, "model_2_pseudolikelihood": s2}
+        elif self.estimator == PySREstimatorEnum.MMDSQUARED:
+            s1 = diag1["mmd_squared"]
+            s2 = diag2["mmd_squared"]
+            is_better = BETTER_MODEL_1 if s1 < s2 else BETTER_MODEL_2 if s2 < s1 else NO_BETTER_MODEL
+            comp = {"model_1_mmd_squared": s1, "model_2_mmd_squared": s2}
+        else:
+            warnings.warn(f"[PySRScore] Unknown estimator {self.estimator}; returning NO_BETTER_MODEL.")
+            is_better, comp = NO_BETTER_MODEL, None
+
+        results.update({
+            "is_better_model": is_better,
+            "comparison_results": comp,
+            "fit_measures_model_2": diag2,
+            "structural_equations_model_2": meta2["structural_equations"],
+            "solver_model_2": meta2["solver"],
+        })
         return results
 
 
@@ -197,12 +247,12 @@ def search_best_graph_climber_pysr(
         node_names = nodes_names_from_data(data)
 
     # Initialize SEMScore with the dataset and parameters
-    sem_score = PySRScore(
+    scorer = PySRScore(
         data=data, estimator=estimator, return_metrics=True
     )
     # Initialize the hill climber with the score function and neighbor generation function
     hill_climber = GraphHillClimber(
-        score_function=sem_score,
+        score_function=scorer,
         get_neighbors_func=get_neighbors_general_graph,
         node_names=node_names,
         keep_initially_oriented_edges=True,
@@ -213,7 +263,7 @@ def search_best_graph_climber_pysr(
     # Run hill-climbing starting from the initial graph
     initial_graph_copy = copy.deepcopy(initial_graph)
     best_graph = hill_climber.run(initial_graph=initial_graph_copy, max_iter=max_iter)
-    best_score = sem_score.exhaustive_results(best_graph)
+    best_score = scorer.exhaustive_results(best_graph)
 
     if best_graph is None:
         raise RuntimeError("Hill climbing did not produce a best graph.")

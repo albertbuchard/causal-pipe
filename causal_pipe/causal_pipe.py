@@ -55,6 +55,7 @@ from .pipe_config import (
     SEMClimbingCausalEffectMethod,
     PYSRCausalEffectMethod,
 )
+from .pysr.pysr_hill_climber import search_best_graph_climber_pysr
 from .utilities.utilities import dump_json_to, set_seed_python_and_r
 
 
@@ -815,13 +816,49 @@ class CausalPipe:
                     pysr_params["output_directory"] = os.path.join(out_dir, "pysr_output")
                     if method.hc_orient_undirected_edges:
                         # Run Hill Climbing
-                        # pysr_score = PYSRScorer()
-                        raise NotImplementedError()
+                        best_graph, best_score = search_best_graph_climber_pysr(
+                            df,
+                            initial_graph=graph,
+                        )
+                        self.causal_effects[method.name] = {
+                            "final_graph": best_graph,
+                            "best_score": best_score,
+                            "structural_equations": best_score.get("structural_equations"),
+                            "fit_measures": best_score.get("fit_measures"),
+                        }
                     else:
                         self.causal_effects[method.name] = symbolic_regression_causal_effect(
                             df,
                             graph,
                             pysr_params=pysr_params,
+                        )
+                        simulator = CyclicSCMSimulator(
+                            structural_equations=self.causal_effects[method.name][
+                                "structural_equations"
+                            ],
+                            undirected_graph=self.undirected_graph,
+                            df_columns=list(df.columns),
+                            seed=self.seed,
+                        )
+                        residuals, Omega, resid_rows = simulator.estimate_noise(
+                            df, out_dir
+                        )
+                        sim_data, solver_stats = simulator.simulate(
+                            df,
+                            Omega=Omega,
+                            resid_rows=resid_rows,
+                            out_dir=out_dir,
+                            noise_kind=method.noise_kind,
+                            alpha=method.alpha,
+                            tol=method.tol,
+                            max_iter=method.max_iter,
+                            restarts=method.restarts,
+                            standardized_init=method.standardized_init,
+                        )
+                        self.causal_effects[method.name][
+                            "fit_measures"
+                        ] = simulator.compute_fit_measures(
+                            df, sim_data, residuals, solver_stats
                         )
                     dump_json_to(
                         data=self.causal_effects[method.name],
@@ -829,7 +866,8 @@ class CausalPipe:
                     )
                     coef_graph, edges, structural_equations = (
                         add_psyr_structural_equation_to_edge_coefficients(
-                            psyr_output=self.causal_effects[method.name],
+                            final_graph=self.causal_effects[method.name]["final_graph"],
+                            structural_equations=self.causal_effects[method.name]["structural_equations"],
                         )
                     )
                     visualize_graph(
@@ -842,37 +880,8 @@ class CausalPipe:
                             out_dir, "pysr_scm_with_equations.png"
                         ),
                     )
-                    simulator = CyclicSCMSimulator(
-                        structural_equations=self.causal_effects[method.name][
-                            "structural_equations"
-                        ],
-                        undirected_graph=self.undirected_graph,
-                        df_columns=list(df.columns),
-                        seed=self.seed,
-                    )
-                    residuals, Omega, resid_rows = simulator.estimate_noise(
-                        df, out_dir
-                    )
-                    sim_data, solver_stats = simulator.simulate(
-                        df,
-                        Omega=Omega,
-                        resid_rows=resid_rows,
-                        out_dir=out_dir,
-                        noise_kind=method.noise_kind,
-                        alpha=method.alpha,
-                        tol=method.tol,
-                        max_iter=method.max_iter,
-                        restarts=method.restarts,
-                        standardized_init=method.standardized_init,
-                    )
-                    fit_measures = simulator.compute_fit_measures(
-                        df, sim_data, residuals, solver_stats
-                    )
-                    self.causal_effects[method.name][
-                        "fit_measures"
-                    ] = fit_measures
                     dump_json_to(
-                        fit_measures, os.path.join(out_dir, "fit_measures.json")
+                        self.causal_effects[method.name]["fit_measures"], os.path.join(out_dir, "fit_measures.json")
                     )
                 else:
                     raise ValueError(

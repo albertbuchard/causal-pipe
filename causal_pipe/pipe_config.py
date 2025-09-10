@@ -289,12 +289,16 @@ class CausalEffectMethod(BaseModel):
         directed (bool): True if the method starts from the directed graph,
                         False if it will use the undirected graph (Markov Blanket / General Skeleton).
         respect_pag (bool): True if the method should respect PAG during hill climbing.
+        chain_orientation (bool): True if the method should save the best graph as the next oriented graph after hill climbing
+         for the next Causal Effect method. False if the method should always start from the orientation method's graph.
+         This is only relevant if the method uses hill climbing. Default is False.
         params (Optional[Dict[str, Any]]): Additional parameters for the method.
     """
 
     name: CausalEffectMethodNameEnum = CausalEffectMethodNameEnum.PEARSON
     directed: bool = True
     respect_pag: bool = True
+    chain_orientation: bool = False
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
@@ -329,6 +333,14 @@ class SEMCausalEffectMethod(CausalEffectMethod):
     estimator: Optional[str] = None
 
 
+class SEMEstimatorEnum(str, Enum):
+    ML = "ML"
+    MLR = "MLR"
+    WLSMV = "WLSMV"
+    ULSMV = "ULSMV"
+    MLM = "MLM"
+    # BAYESIAN = "BAYESIAN"
+
 class SEMClimbingCausalEffectMethod(CausalEffectMethod):
     """Structural Equation Modeling with Hill Climbing search."""
 
@@ -357,6 +369,12 @@ class PYSRCausalEffectMethod(CausalEffectMethod):
     standardized_init: bool = False
     hc_orient_undirected_edges: bool = False
     pysr_params: Dict[str, Any] = Field(default_factory=dict)
+
+class PYSRCausalEffectMethodHillClimbing(PYSRCausalEffectMethod):
+    """Symbolic regression using PySR with Hill Climbing orientation."""
+
+    hc_orient_undirected_edges: bool = True
+    respect_pag: bool = True
 
 
 class CausalPipeConfig(BaseModel):
