@@ -878,6 +878,10 @@ class CausalPipe:
                             structural_equations=self.causal_effects[method.name]["structural_equations"],
                         )
                     )
+                    graph_name = "pysr_result_with_equations.png"
+                    if method.hc_orient_undirected_edges:
+                        graph_name = "pysr_result_hc_best_graph_with_equations.png"
+
                     visualize_graph(
                         coef_graph,
                         edges=edges,
@@ -885,7 +889,7 @@ class CausalPipe:
                         title="PySR SCM Result",
                         show=show_plot,
                         output_path=os.path.join(
-                            out_dir, "pysr_scm_with_equations.png"
+                            out_dir, graph_name
                         ),
                     )
                     dump_json_to(

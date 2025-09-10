@@ -42,15 +42,15 @@ if __name__ == "__main__":
         orientation_method=FCIOrientationMethod(),
         causal_effect_methods=[
             # ML SEM - Respect Partial Ancestor Graph - No Climbing
-            SEMCausalEffectMethod(estimator="ML", respect_pag=True),
+            # SEMCausalEffectMethod(estimator="ML", respect_pag=True),
             # For ordinal data
             # SEMCausalEffectMethod(estimator="WLSMV"),
             # Simple pearson/spearman partial correlation
-            PearsonCausalEffectMethod(),
+            # PearsonCausalEffectMethod(),
             # SpearmanCausalEffectMethod(),
-            SEMClimbingCausalEffectMethod(estimator="MLR",
-                                          respect_pag=True,
-                                          finalize_with_resid_covariances=False),
+            # SEMClimbingCausalEffectMethod(estimator="MLR",
+            #                               respect_pag=True,
+            #                               finalize_with_resid_covariances=False),
             # PySR-based Causal Effect estimation
             PYSRCausalEffectMethodHillClimbing()
         ],

@@ -24,12 +24,14 @@ def _fit_pysr(X: np.ndarray,
     except ImportError as exc:
         raise ImportError("PySR is required for symbolic regression causal effect estimation") from exc
 
-    # Ensure X has at least one column
     if X.ndim == 1:
         X = X.reshape(-1, 1)
+
     if X.shape[1] == 0:
-        # Use a constant column when no predictors are provided
-        X = np.ones((len(X), 1))
+        const = float(np.mean(y))
+        best = {"sympy_format": str(const), "complexity": 1}
+        r2 = 0.0
+        return best, r2
 
     # skip penalty if no real predictors
     apply_penalty = penalize_absent_features and (X.shape[1] > 0)

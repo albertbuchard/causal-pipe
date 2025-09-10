@@ -5,7 +5,7 @@ from typing import Optional, Dict, List, Any, Tuple, Callable
 
 import numpy as np
 import pandas as pd
-from causallearn.graph import GeneralGraph
+from causallearn.graph.GeneralGraph import GeneralGraph
 
 from causal_pipe.hill_climber.hill_climber import ScoreFunction, GraphHillClimber
 from causal_pipe.pysr.pysr_helpers import SimulatorConfig, fit_simulate_and_score
