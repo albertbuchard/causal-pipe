@@ -7,4 +7,22 @@ Welcome to the documentation for **CausalPipe**, a Python package that simplifie
 - **Causal Discovery**: Construct causal graphs using methods like Fast Adjacency Search (FAS) or Bootstrap-based Causal Structure Learning (BCSL).
 - **Edge Orientation**: Use algorithms such as Fast Causal Inference (FCI) or Hill Climbing to orient edges in causal graphs.
 - **Causal Effect Estimation**: Estimate effects using methods such as Partial Correlation, Structural Equation Modeling (SEM), or kernel methods.
+- **Symbolic Regression**: Integrate [PySR](https://github.com/MilesCranmer/PySR) to learn nonlinear structural equations and score cyclic models via pseudo-likelihood or MMD<sup>2</sup>.
 - **Visualization**: Visualize correlation graphs, causal graphs, and SEM results.
+
+## Configuration Classes
+
+CausalPipe is configured through a collection of dataclasses that define each
+step of the pipeline:
+
+- **VariableTypes** – declare continuous, ordinal, and nominal variables.
+- **DataPreprocessingParams** – control imputation, standardization, and
+  feature filtering.
+- **Skeleton methods** – `FASSkeletonMethod`, `BCSLSkeletonMethod`.
+- **Orientation methods** – `FCIOrientationMethod`,
+  `HillClimbingOrientationMethod`.
+- **Causal effect methods** – `PearsonCausalEffectMethod`,
+  `SpearmanCausalEffectMethod`, `MICausalEffectMethod`,
+  `KCICausalEffectMethod`, `SEMCausalEffectMethod`,
+  `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`,
+  `PYSRCausalEffectMethodHillClimbing`.

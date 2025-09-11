@@ -51,8 +51,21 @@ config = CausalPipeConfig(
     show_plots=True,
     verbose=True,
 )
- 
+
 ```
+
+CausalPipe also ships with a range of specialized classes for each
+stage of the pipeline. You can mix and match these to suit your
+analysis:
+
+- **Skeleton methods**: `FASSkeletonMethod`, `BCSLSkeletonMethod`
+- **Orientation methods**: `FCIOrientationMethod`,
+  `HillClimbingOrientationMethod`
+- **Causal effect methods**: `PearsonCausalEffectMethod`,
+  `SpearmanCausalEffectMethod`, `MICausalEffectMethod`,
+  `KCICausalEffectMethod`, `SEMCausalEffectMethod`,
+  `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`,
+  `PYSRCausalEffectMethodHillClimbing`
 
 ## 2. Initialize CausalPipe
 
@@ -77,6 +90,24 @@ data = pd.read_csv("your_data.csv")
 
 # Run the causal discovery pipeline
 causal_pipe.run_pipeline(data)
+```
+
+## 4. Estimating Nonlinear Mechanisms with PySR
+
+`CausalPipe` can learn symbolic structural equations using
+[PySR](https://github.com/MilesCranmer/PySR). Enable it by adding the
+`pysr` causal effect method:
+
+```python
+from causal_pipe.pipe_config import PYSRCausalEffectMethod
+
+config.causal_effect_methods = [
+    PYSRCausalEffectMethod(hc_orient_undirected_edges=True)
+]
+
+causal_pipe = CausalPipe(config)
+results = causal_pipe.run_pipeline(data)
+print(results["pysr"]["structural_equations"])
 ```
 
 

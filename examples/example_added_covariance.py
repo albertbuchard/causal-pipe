@@ -12,7 +12,7 @@ from causal_pipe.causal_pipe import (
 from causal_pipe.pipe_config import (
     VariableTypes,
     DataPreprocessingParams,
-    CausalEffectMethod,
+    SEMClimbingCausalEffectMethod,
 )
 
 
@@ -134,16 +134,12 @@ def run_pipeline_with_resid_covariance():
         skeleton_method=FASSkeletonMethod(),
         orientation_method=FCIOrientationMethod(),
         causal_effect_methods=[
-            CausalEffectMethod(
-                name="sem-climbing",
-                directed=True,
-                params={
-                    "estimator": "MLR",
-                    "finalize_with_resid_covariances": True,
-                    "whitelist_pairs": pd.DataFrame({"lhs": ["Var0"], "rhs": ["Ord3"]}),
-                    "max_add": 1,
-                    "max_iter": 2,
-                },
+            SEMClimbingCausalEffectMethod(
+                estimator="MLR",
+                finalize_with_resid_covariances=True,
+                whitelist_pairs=[("Var0", "Ord3")],
+                max_add=1,
+                max_iter=2,
             )
         ],
         study_name="example_added_covariance",
