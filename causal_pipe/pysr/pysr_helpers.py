@@ -1,18 +1,76 @@
 from __future__ import annotations
-import math
-from dataclasses import dataclass
-from typing import Dict, List, Tuple, Any, Optional
 
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+import math
 import numpy as np
-import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
+from sympy import Pow, log as s_log, exp as s_exp, sqrt as s_sqrt, sin as s_sin, cos as s_cos
 
 from causal_pipe.partial_correlations.partial_correlations import get_parents_or_undirected
-from causal_pipe.pysr.cyclic_scm import CyclicSCMSimulator
-from causal_pipe.utilities.utilities import dump_json_to
-from causal_pipe.pysr.pysr_utilities import PySRFitterType
-from causal_pipe.pysr.pysr_utilities import PySRFitterOutput
 
+_EPS = 1e-12
+_MAX_EXP = 50.0           # exp(±50) ~ 3.9e21; plenty before overflow
+_CLIP_OUT = 1e12          # final output clamp
+
+def _safe_log(x):
+    return np.log(np.clip(x, _EPS, np.inf))
+
+def _safe_exp(x):
+    return np.exp(np.clip(x, -_MAX_EXP, _MAX_EXP))
+
+def _safe_sqrt(x):
+    return np.sqrt(np.clip(x, 0.0, np.inf))
+
+def _safe_div(a, b):
+    b2 = np.where(np.isfinite(b) & (np.abs(b) > _EPS), b, np.sign(b) * _EPS + (b==0)*_EPS)
+    return a / b2
+
+def _safe_pow(a, b):
+    a = np.asarray(a, float)
+    b = np.asarray(b, float)
+    # negative base with non-integer exponent → NaN (avoid complex)
+    int_b = np.isclose(b, np.round(b))
+    neg_invalid = (a < 0) & (~int_b)
+    # compute via exp(b*log(|a|))
+    z = b * np.log(np.clip(np.abs(a), _EPS, np.inf))
+    z = np.clip(z, -_MAX_EXP, _MAX_EXP)
+    out = np.exp(z)
+    # restore sign for odd integer exponents with negative base
+    neg_mask = (a < 0) & int_b & (np.mod(np.round(b), 2) != 0)
+    out = np.where(neg_mask, -out, out)
+    out = np.where(neg_invalid, np.nan, out)
+    return out
+
+# mapping for sympy.lambdify
+_SAFE_MODULE = {
+    "log": _safe_log,
+    "exp": _safe_exp,
+    "sqrt": _safe_sqrt,
+    "sin": np.sin,
+    "cos": np.cos,
+    "pow": _safe_pow,
+    "divide": _safe_div,
+}
+
+def _safe_call(f, args):
+    with np.errstate(all="ignore"):
+        try:
+            y = f(*args) if args else f()
+        except Exception:
+            return np.nan
+    y = np.asarray(y, dtype=float)
+    if not np.all(np.isfinite(y)):
+        return np.nan
+    return float(np.clip(y, -_CLIP_OUT, _CLIP_OUT))
+
+
+def _make_fi(f, parents_tuple):
+    # parents_tuple is immutable; avoids late-binding surprises
+    def fi(vals):
+        return _safe_call(f, [vals[p] for p in parents_tuple])
+    return fi
 
 # ---------- Graph parents ----------------------------------------------------
 
@@ -115,55 +173,3 @@ class SimulatorConfig:
     out_dir: Optional[str] = None
 
 
-def fit_simulate_and_score(
-    df: pd.DataFrame,
-    graph: GeneralGraph,
-    fitter: PySRFitterType,
-    pysr_params: Dict[str, Any],
-    sim_cfg: SimulatorConfig,
-) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    """
-    1) Fit PySR equations conditioned on `graph`
-    2) Simulate from the cyclic SCM
-    3) Compute diagnostics + scores: pseudolikelihood and MMD^2
-    """
-    # Fit equations
-    fit_out: PySRFitterOutput = fitter(df, graph, pysr_params)
-    structural_equations = fit_out.structural_equations
-
-    # Simulate
-    simulator = CyclicSCMSimulator(
-        structural_equations=structural_equations,
-        undirected_graph=graph,                 # components from the same graph
-        df_columns=list(df.columns),
-        seed=sim_cfg.seed,
-    )
-    out_dir = sim_cfg.out_dir or "."
-    residuals, Omega, resid_rows = simulator.estimate_noise(df, out_dir)
-    sim_data, solver_stats = simulator.simulate(
-        df,
-        Omega=Omega,
-        resid_rows=resid_rows,
-        out_dir=out_dir,
-        noise_kind=sim_cfg.noise_kind,
-        alpha=sim_cfg.alpha,
-        tol=sim_cfg.tol,
-        max_iter=sim_cfg.max_iter,
-        restarts=sim_cfg.restarts,
-        standardized_init=sim_cfg.standardized_init,
-    )
-    diagnostics = simulator.compute_fit_measures(df, sim_data, residuals, solver_stats)
-
-    # Scores
-    pll = graph_pseudolikelihood(residuals)
-    X = df.values.astype(float, copy=False)
-    mmd2 = mmd2_unbiased(X, sim_data.astype(float, copy=False))
-
-    diagnostics["pseudolikelihood"] = float(pll)
-    diagnostics["mmd_squared"] = float(mmd2)
-
-    meta = {
-        "solver": solver_stats,
-        "structural_equations": structural_equations,
-    }
-    return structural_equations, diagnostics, meta

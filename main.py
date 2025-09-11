@@ -8,11 +8,12 @@ from causal_pipe.pipe_config import (
     DataPreprocessingParams,
     CausalEffectMethod, CausalEffectMethodNameEnum, PYSRCausalEffectMethod, PearsonCausalEffectMethod,
     SEMCausalEffectMethod, SEMClimbingCausalEffectMethod, SpearmanCausalEffectMethod,
-    PYSRCausalEffectMethodHillClimbing, HandlingMissingEnum,
+    PYSRCausalEffectMethodHillClimbing, HandlingMissingEnum, ConditionalIndependenceMethodEnum,
 )
 from examples.easy import compare_easy_dataset
 from examples.easy_ordinal import compare_easy_dataset_with_ordinal
 from examples.hard import compare_hard_dataset
+from examples.non_linear import compare_non_linear_dataset
 from examples.super_basic import compare_super_basic_dataset
 
 if __name__ == "__main__":
@@ -38,6 +39,7 @@ if __name__ == "__main__":
         preprocessing_params=preprocessor_params,
         skeleton_method=FASSkeletonMethod(
             bootstrap_resamples=50,
+            conditional_independence_method=ConditionalIndependenceMethodEnum.KCI
             # n_jobs=4 or None if you want to use (all available cores - 1)
         ),
         orientation_method=FCIOrientationMethod(),
@@ -49,21 +51,29 @@ if __name__ == "__main__":
             # Simple pearson/spearman partial correlation
             # PearsonCausalEffectMethod(),
             # SpearmanCausalEffectMethod(),
-            SEMClimbingCausalEffectMethod(estimator="ML",
-                                          respect_pag=True,
-                                          chain_orientation=True, # Next Causal Effect Method will use the best graph found here
-                                          finalize_with_resid_covariances=False),
+            # SEMClimbingCausalEffectMethod(estimator="ML",
+            #                               respect_pag=True,
+            #                               chain_orientation=True, # Next Causal Effect Method will use the best graph found here
+            #                               finalize_with_resid_covariances=False),
             # PySR-based Causal Effect estimation
-            PYSRCausalEffectMethod(
+            # PYSRCausalEffectMethod(
+            #     pysr_params={
+            #         "niterations": 100,
+            #         "population_size": 100,
+            #         "maxsize": 10,
+            #         "binary_operators": ["+", "-", "*", "/", "pow"],
+            #         "unary_operators": ["exp", "log", "sin", "cos", "inv"],
+            #     },
+            # ),
+            PYSRCausalEffectMethodHillClimbing(
                 pysr_params={
-                    "niterations": 100,
-                    "population_size": 100,
-                    "maxsize": 10,
-                    "binary_operators": ["+", "-", "*", "/"],
-                    "unary_operators": ["exp", "log", "sin", "cos", "inv"],
-                },
+                        "niterations": 20,
+                        "population_size": 100,
+                        "maxsize": 10,
+                        "binary_operators": ["+", "-", "*", "/", "pow"],
+                        "unary_operators": ["exp", "log", "sin", "cos", "inv"],
+                    },
             )
-            # PYSRCausalEffectMethodHillClimbing()
         ],
         study_name="pipe_super_basic_dataset",
         output_path="./output/",
@@ -73,4 +83,5 @@ if __name__ == "__main__":
     # compare_super_basic_dataset(config)
     # compare_easy_dataset(config)
     # compare_easy_dataset_with_ordinal(config)
-    compare_hard_dataset(config)
+    # compare_hard_dataset(config)
+    compare_non_linear_dataset(config)

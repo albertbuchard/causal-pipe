@@ -8,7 +8,8 @@ import pandas as pd
 from causallearn.graph.GeneralGraph import GeneralGraph
 
 from causal_pipe.hill_climber.hill_climber import ScoreFunction, GraphHillClimber
-from causal_pipe.pysr.pysr_helpers import SimulatorConfig, fit_simulate_and_score
+from causal_pipe.pysr.pysr_helpers import SimulatorConfig
+from causal_pipe.pysr.cyclic_scm import fit_simulate_and_score
 from causal_pipe.pysr.pysr_regression import symbolic_regression_causal_effect
 from causal_pipe.pysr.pysr_utilities import PySRFitterType
 from causal_pipe.utilities.graph_utilities import get_neighbors_general_graph

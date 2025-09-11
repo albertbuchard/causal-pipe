@@ -138,7 +138,7 @@ class SkeletonMethod(BaseModel):
 
     name: SkeletonMethodNameEnum
     conditional_independence_method: ConditionalIndependenceMethodEnum = (
-        ConditionalIndependenceMethodEnum.FISHERZ
+        ConditionalIndependenceMethodEnum.KCI
     )
     alpha: float = 0.05
     params: Optional[Dict[str, Any]] = Field(default_factory=dict)

@@ -1,0 +1,10 @@
+site_name: CausalPipe Documentation
+theme:
+  name: 'material'
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quick Start: quickstart.md
+  - API Reference: api_reference.md
+  - Contributing: contributing.md
+site_url: https://albertbuchard.github.io/causal-pipe
