@@ -93,8 +93,15 @@ export NEW_VERSION_ARG="${NEW_VERSION_ARG:-}"
 # Clean previous builds
 rm -rf build dist *.egg-info
 
-# Ensure build tooling
-python -m pip install -U pip setuptools wheel build twine
+# Ensure build tooling and documentation utilities
+python -m pip install -U pip setuptools wheel build twine pdoc mkdocs mkdocs-material
+
+# Regenerate API documentation
+pdoc --force --format markdown causal_pipe > docs/api_reference.md
+test -s docs/api_reference.md
+
+# Validate documentation builds without warnings
+mkdocs build --strict
 
 # Build sdist + wheel
 python -m build
