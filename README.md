@@ -109,12 +109,11 @@ config = CausalPipeConfig(
     verbose=True,
 )
 
-```
-
+``` 
 CausalPipe exposes several configuration dataclasses that can be combined
 as needed:
 
-- **Variables & preprocessing**: `VariableTypes`, `DataPreprocessingParams`
+- **Variables & preprocessing**: `VariableTypes`, `DataPreprocessingParams` 
 - **Skeleton methods**: `FASSkeletonMethod`, `BCSLSkeletonMethod`
 - **Orientation methods**: `FCIOrientationMethod`,
   `HillClimbingOrientationMethod`
@@ -123,10 +122,10 @@ as needed:
   `KCICausalEffectMethod`, `SEMCausalEffectMethod`,
   `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`,
   `PYSRCausalEffectMethodHillClimbing`
-
+ 
 For a complete list and detailed field descriptions, see the
 [API Reference](https://albertbuchard.github.io/causal-pipe/api_reference/).
-
+ 
 ### 2. Initializing CausalPipe
 
 Create an instance of the `CausalPipe` class by passing the configuration object.
