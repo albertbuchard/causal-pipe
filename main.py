@@ -81,7 +81,7 @@ if __name__ == "__main__":
         verbose=True,
     )
     # compare_super_basic_dataset(config)
-    # compare_easy_dataset(config)
+    compare_easy_dataset(config)
     # compare_easy_dataset_with_ordinal(config)
     # compare_hard_dataset(config)
-    compare_non_linear_dataset(config)
+    # compare_non_linear_dataset(config)

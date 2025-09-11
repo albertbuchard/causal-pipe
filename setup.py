@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="causal-pipe",
-    version="0.9.12",
+    version="0.9.13",
     author="Buchard, Albert",
     author_email="albert.buchard@gmail.com",
     description="A Python package streamlining the causal discovery pipeline for easy use.",

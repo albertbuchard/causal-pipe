@@ -192,6 +192,21 @@ def edge_a_is_not_an_ancestor_b(edge: Edge) -> bool:
     return edge.endpoint2 == Endpoint.CIRCLE and edge.endpoint1 == Endpoint.ARROW
 
 
+def edge_has_circle_endpoint(edge: Edge) -> bool:
+    """Return True if either endpoint of the edge is a PAG circle."""
+    return (
+        edge.endpoint1 == Endpoint.CIRCLE or edge.endpoint2 == Endpoint.CIRCLE
+    )
+
+
+def has_circle_endpoints(general_graph: GeneralGraph) -> bool:
+    """Return True if any edge in the graph has a circle endpoint."""
+    for edge in general_graph.get_graph_edges():
+        if edge_has_circle_endpoint(edge):
+            return True
+    return False
+
+
 def edge_with_latent_common_cause(edge: Edge) -> bool:
     """
     Checks if the edge has a latent common cause.
@@ -257,7 +272,9 @@ def invert_edge(edge: Edge):
     )
 
 
-def general_graph_to_sem_model(general_graph: GeneralGraph) -> Tuple[str, List[str]]:
+def general_graph_to_sem_model(
+    general_graph: GeneralGraph, on_circle: str = "arrow"
+) -> Tuple[str, List[str]]:
     """
     Converts a GeneralGraph instance to a lavaan SEM model string.
     Adds variance to exogenous variables and residual covariances for undirected edges.
@@ -266,6 +283,10 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> Tuple[str, List[s
     ----------
     general_graph : GeneralGraph
         The input graph from which to derive the SEM model.
+    on_circle : str, optional
+        Behaviour when circle endpoints are present. If ``"error"`` and the graph
+        contains any circle endpoints, a :class:`ValueError` is raised. If ``"arrow"``
+        (the default), circle endpoints are treated as arrows.
 
     Returns
     -------
@@ -274,6 +295,11 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> Tuple[str, List[s
     exogenous_variables : List[str]
         A list of exogenous variables (nodes with no incoming edges).
     """
+    if on_circle == "error" and has_circle_endpoints(general_graph):
+        raise ValueError(
+            "Unresolved PAG circles present after hill-climb; tie-breaker may be misconfigured."
+        )
+
     node_list = general_graph.get_nodes()
     node_names = [node.get_name() for node in node_list]
     exogenous_variables = set(node_names)
@@ -403,8 +429,6 @@ def get_all_directed_edges_list(graph: GeneralGraph) -> List[Tuple[int, int]]:
                 if (
                     graph.is_directed_from_to(edge_node_1, edge_node_2)
                     or graph.is_directed_from_to(edge_node_2, edge_node_1)
-                    or edge_b_is_not_an_ancestor_a(edge)
-                    or edge_a_is_not_an_ancestor_b(edge)
                 ):
                     directed_edges.append((i, j))
             else:
@@ -482,12 +506,18 @@ def get_neighbors_general_graph(
                     neighbor_graph_2.add_edge(get_directed_edge(node_j, node_i))
                     neighbors.append(neighbor_graph_2)
                     switched_edges.append(edge)
+
+                    neighbor_graph_3 = copy_graph(general_graph)
+                    neighbor_graph_3.remove_edge(edge)
+                    neighbor_graph_3.add_edge(get_bidirected_edge(node_i, node_j))
+                    neighbors.append(neighbor_graph_3)
+                    switched_edges.append(edge)
                     continue
 
                 if edge.endpoint1 == Endpoint.CIRCLE and edge.endpoint2 == Endpoint.ARROW:
                     neighbor_graph = copy_graph(general_graph)
                     neighbor_graph.remove_edge(edge)
-                    neighbor_graph.add_edge(get_directed_edge(node_i, node_j))
+                    neighbor_graph.add_edge(get_bidirected_edge(node_i, node_j))
                     neighbors.append(neighbor_graph)
                     switched_edges.append(edge)
                     continue
@@ -495,7 +525,7 @@ def get_neighbors_general_graph(
                 if edge.endpoint1 == Endpoint.ARROW and edge.endpoint2 == Endpoint.CIRCLE:
                     neighbor_graph = copy_graph(general_graph)
                     neighbor_graph.remove_edge(edge)
-                    neighbor_graph.add_edge(get_directed_edge(node_j, node_i))
+                    neighbor_graph.add_edge(get_bidirected_edge(node_j, node_i))
                     neighbors.append(neighbor_graph)
                     switched_edges.append(edge)
                     continue
@@ -506,6 +536,12 @@ def get_neighbors_general_graph(
                     neighbor_graph.add_edge(get_directed_edge(node_j, node_i))
                     neighbors.append(neighbor_graph)
                     switched_edges.append(edge)
+
+                    neighbor_graph_2 = copy_graph(general_graph)
+                    neighbor_graph_2.remove_edge(edge)
+                    neighbor_graph_2.add_edge(get_bidirected_edge(node_i, node_j))
+                    neighbors.append(neighbor_graph_2)
+                    switched_edges.append(edge)
                     continue
 
                 if edge.endpoint1 == Endpoint.TAIL and edge.endpoint2 == Endpoint.CIRCLE:
@@ -514,33 +550,38 @@ def get_neighbors_general_graph(
                     neighbor_graph.add_edge(get_directed_edge(node_i, node_j))
                     neighbors.append(neighbor_graph)
                     switched_edges.append(edge)
+
+                    neighbor_graph_2 = copy_graph(general_graph)
+                    neighbor_graph_2.remove_edge(edge)
+                    neighbor_graph_2.add_edge(get_bidirected_edge(node_i, node_j))
+                    neighbors.append(neighbor_graph_2)
+                    switched_edges.append(edge)
                     continue
 
-                continue
-
-            is_directed = is_edge_directed(edge)
-
-            # Check for a directed edge from node_i to node_j
-            if is_directed:
-                neighbor_graph = switch_directed_edge_in_graph(general_graph, edge)
-                neighbors.append(neighbor_graph)
-                switched_edges.append(edge)
-
-                neighbor_graph = make_edge_undirected(general_graph, edge)
-                neighbors.append(neighbor_graph)
-                switched_edges.append(edge)
             else:
-                neighbor_graph_1 = copy_graph(general_graph)
-                neighbor_graph_1.remove_edge(edge)
-                neighbor_graph_1.add_directed_edge(node_i, node_j)
-                neighbors.append(neighbor_graph_1)
-                switched_edges.append(edge)
+                is_directed = is_edge_directed(edge)
 
-                neighbor_graph_2 = copy_graph(general_graph)
-                neighbor_graph_2.remove_edge(edge)
-                neighbor_graph_2.add_directed_edge(node_j, node_i)
-                neighbors.append(neighbor_graph_2)
-                switched_edges.append(edge)
+                # Check for a directed edge from node_i to node_j
+                if is_directed:
+                    neighbor_graph = switch_directed_edge_in_graph(general_graph, edge)
+                    neighbors.append(neighbor_graph)
+                    switched_edges.append(edge)
+
+                    neighbor_graph = make_edge_undirected(general_graph, edge)
+                    neighbors.append(neighbor_graph)
+                    switched_edges.append(edge)
+                else:
+                    neighbor_graph_1 = copy_graph(general_graph)
+                    neighbor_graph_1.remove_edge(edge)
+                    neighbor_graph_1.add_directed_edge(node_i, node_j)
+                    neighbors.append(neighbor_graph_1)
+                    switched_edges.append(edge)
+
+                    neighbor_graph_2 = copy_graph(general_graph)
+                    neighbor_graph_2.remove_edge(edge)
+                    neighbor_graph_2.add_directed_edge(node_j, node_i)
+                    neighbors.append(neighbor_graph_2)
+                    switched_edges.append(edge)
 
     assert len(neighbors) == len(
         switched_edges
@@ -571,6 +612,18 @@ def make_edge_undirected(graph: GeneralGraph, edge: Edge):
     node1, node2 = edge.node1, edge.node2
     graph.remove_connecting_edge(node1, node2)
     graph.add_edge(get_undirected_edge(node1, node2))
+    return graph
+
+def make_edge_bidirected(graph: GeneralGraph, edge: Edge):
+    """
+    Make the edge bidirected by removing the directed edge and adding a bidirected edge.
+    :param graph: GeneralGraph: The graph to modify.
+    :param edge: Edge: The directed edge to make bidirected.
+    """
+    graph = copy_graph(graph)
+    node1, node2 = edge.node1, edge.node2
+    graph.remove_connecting_edge(node1, node2)
+    graph.add_edge(get_bidirected_edge(node1, node2))
     return graph
 
 
