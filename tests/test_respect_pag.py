@@ -49,6 +49,7 @@ causallearn_graph_GraphNode = types.ModuleType("causallearn.graph.GraphNode")
 causallearn_graph_GeneralGraph = types.ModuleType("causallearn.graph.GeneralGraph")
 causallearn_graph_Edge = types.ModuleType("causallearn.graph.Edge")
 causallearn_graph_Endpoint = types.ModuleType("causallearn.graph.Endpoint")
+causallearn_graph_NodeType = types.ModuleType("causallearn.graph.NodeType")
 
 
 class GraphNode:
@@ -63,6 +64,13 @@ class Edge:
     def __init__(self, n1, n2, e1=None, e2=None):
         self.node1, self.node2 = n1, n2
         self.endpoint1, self.endpoint2 = e1, e2
+
+    def get_endpoint(self, node):
+        if node == self.node1:
+            return self.endpoint1
+        if node == self.node2:
+            return self.endpoint2
+        return None
 
 
 class Endpoint(dict):
@@ -151,6 +159,9 @@ causallearn_graph_GraphNode.GraphNode = GraphNode
 causallearn_graph_GeneralGraph.GeneralGraph = GeneralGraph
 causallearn_graph_Edge.Edge = Edge
 causallearn_graph_Endpoint.Endpoint = Endpoint
+class NodeType:
+    pass
+causallearn_graph_NodeType.NodeType = NodeType
 
 sys.modules.setdefault("causallearn", causallearn)
 sys.modules.setdefault("causallearn.graph", causallearn_graph)
@@ -158,6 +169,7 @@ sys.modules.setdefault("causallearn.graph.GraphNode", causallearn_graph_GraphNod
 sys.modules.setdefault("causallearn.graph.GeneralGraph", causallearn_graph_GeneralGraph)
 sys.modules.setdefault("causallearn.graph.Edge", causallearn_graph_Edge)
 sys.modules.setdefault("causallearn.graph.Endpoint", causallearn_graph_Endpoint)
+sys.modules.setdefault("causallearn.graph.NodeType", causallearn_graph_NodeType)
 
 bcsl_graph_utils = types.ModuleType("bcsl.graph_utils")
 
@@ -184,7 +196,10 @@ from causal_pipe.utilities.graph_utilities import get_neighbors_general_graph
 import causal_pipe.hill_climber.hill_climber as hill_climber
 importlib.reload(hill_climber)
 from causal_pipe.hill_climber.hill_climber import GraphHillClimber
-from causal_pipe.utilities.model_comparison_utilities import NO_BETTER_MODEL
+from causal_pipe.utilities.model_comparison_utilities import (
+    NO_BETTER_MODEL,
+    BETTER_MODEL_1,
+)
 
 
 def get_bidirected_edge(n1, n2):
@@ -235,7 +250,7 @@ def test_pag_neighbor_generation_respects_pag():
     assert actual_moves == expected_moves
 
 
-def test_hill_climber_preserves_circles_when_respecting_pag():
+def test_hill_climber_prefers_neighbor_on_circle_tie():
     a = GraphNode("A")
     b = GraphNode("B")
     graph = GeneralGraph(nodes=[a, b])
@@ -249,7 +264,14 @@ def test_hill_climber_preserves_circles_when_respecting_pag():
     )
     result = climber.run(graph, max_iter=1)
     edge = result.get_edge(a, b)
-    assert edge.endpoint1 == Endpoint.CIRCLE and edge.endpoint2 == Endpoint.CIRCLE
+
+    assert edge.endpoint1 != Endpoint.CIRCLE and edge.endpoint2 != Endpoint.CIRCLE
+
+    neighbors, _ = get_neighbors_general_graph(graph, respect_pag=True)
+    neighbor_endpoints = [
+        (n.get_edge(a, b).endpoint1, n.get_edge(a, b).endpoint2) for n in neighbors
+    ]
+    assert (edge.endpoint1, edge.endpoint2) in neighbor_endpoints
 
 
 def test_hill_climber_unifies_circles_by_default():
@@ -266,3 +288,28 @@ def test_hill_climber_unifies_circles_by_default():
     result = climber.run(graph, max_iter=1)
     edge = result.get_edge(a, b)
     assert edge.endpoint1 == Endpoint.ARROW and edge.endpoint2 == Endpoint.ARROW
+
+
+def test_hill_climber_better_model_wins_on_circle_edge():
+    a = GraphNode("A")
+    b = GraphNode("B")
+    graph = GeneralGraph(nodes=[a, b])
+    graph.add_edge(Edge(a, b, Endpoint.CIRCLE, Endpoint.CIRCLE))
+
+    def favor_a_to_b(g: GeneralGraph, compared_to_graph=None):
+        if compared_to_graph is None:
+            return {"score": 0}
+        e = g.get_edge(a, b)
+        if e.endpoint1 == Endpoint.TAIL and e.endpoint2 == Endpoint.ARROW:
+            return {"score": 1, "is_better_model": BETTER_MODEL_1}
+        return {"score": 0, "is_better_model": BETTER_MODEL_1}
+
+    climber = GraphHillClimber(
+        score_function=favor_a_to_b,
+        get_neighbors_func=get_neighbors_general_graph,
+        node_names=["A", "B"],
+        respect_pag=True,
+    )
+    result = climber.run(graph, max_iter=1)
+    edge = result.get_edge(a, b)
+    assert edge.endpoint1 == Endpoint.TAIL and edge.endpoint2 == Endpoint.ARROW

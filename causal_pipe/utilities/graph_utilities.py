@@ -192,6 +192,14 @@ def edge_a_is_not_an_ancestor_b(edge: Edge) -> bool:
     return edge.endpoint2 == Endpoint.CIRCLE and edge.endpoint1 == Endpoint.ARROW
 
 
+def edge_has_circle_endpoint(edge: Edge) -> bool:
+    """Return True if either endpoint of the edge is a PAG circle."""
+    return (
+        edge.get_endpoint(edge.node1) == Endpoint.CIRCLE
+        or edge.get_endpoint(edge.node2) == Endpoint.CIRCLE
+    )
+
+
 def edge_with_latent_common_cause(edge: Edge) -> bool:
     """
     Checks if the edge has a latent common cause.
