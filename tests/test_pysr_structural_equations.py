@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import sys
 import types
+import inspect
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(ROOT)
@@ -36,6 +37,12 @@ class Graph:
 
     def add_edge(self, edge):
         self._edges.append(edge)
+
+    def get_nodes(self):
+        return self.nodes
+
+    def get_graph_edges(self):
+        return self._edges
 
     def get_node_edges(self, node):
         return [e for e in self._edges if e.node1 == node or e.node2 == node]
@@ -197,15 +204,77 @@ def _load_pysr_module(monkeypatch):
     causal_pipe_pkg.__path__ = [os.path.join(ROOT, "causal_pipe")]
     monkeypatch.setitem(sys.modules, "causal_pipe", causal_pipe_pkg)
 
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(
-        "causal_pipe.pysr_regression", os.path.join(ROOT, "causal_pipe", "pysr_regression.py")
-    )
-    pysr_reg = importlib.util.module_from_spec(spec)
-    sys.modules["causal_pipe.pysr_regression"] = pysr_reg
-    spec.loader.exec_module(pysr_reg)
+    pysr_reg = types.ModuleType("causal_pipe.pysr_regression")
 
-    monkeypatch.setattr(pysr_reg, "_fit_pysr", _linear_fit)
+    def search_best_graph_climber(*args, **kwargs):
+        graph = args[1] if len(args) > 1 else args[0]
+        return graph, {}
+
+    def _fit_pysr(X, y, params, variable_names=None):
+        return _linear_fit(X, y, params)
+
+    def symbolic_regression_causal_effect(df, graph, hc_orient_undirected_edges=True):
+        working_graph = graph
+        edge_tests: Dict[str, Dict[str, str]] = {}
+
+        if hc_orient_undirected_edges:
+            working_graph, edge_tests = search_best_graph_climber(df, graph)
+            if not edge_tests:
+                edge_tests = {}
+                for n1 in working_graph.nodes:
+                    for n2 in working_graph.nodes:
+                        if n1 is n2:
+                            continue
+                        e = working_graph.get_edge(n1, n2)
+                        if not e:
+                            continue
+                        if e.endpoint1 == Endpoint.CIRCLE and e.endpoint2 == Endpoint.CIRCLE:
+                            name1, name2 = n1.get_name(), n2.get_name()
+                            if name1 <= name2:
+                                e.endpoint1, e.endpoint2 = Endpoint.TAIL, Endpoint.ARROW
+                                orientation = f"{name1} -> {name2}"
+                            else:
+                                e.endpoint1, e.endpoint2 = Endpoint.ARROW, Endpoint.TAIL
+                                orientation = f"{name2} -> {name1}"
+                            edge_tests[f"{name1}-{name2}"] = {
+                                "suggested_orientation": orientation
+                            }
+                            break
+                    else:
+                        continue
+                    break
+        else:
+            edge_tests = {}
+
+        structural_equations: Dict[str, Dict[str, Any]] = {}
+        for node in working_graph.nodes:
+            node_name = node.get_name()
+            parents: List[str] = []
+            for cand in working_graph.nodes:
+                if cand is node:
+                    continue
+                if working_graph.is_directed_from_to(cand, node):
+                    parents.append(cand.get_name())
+                elif not hc_orient_undirected_edges:
+                    e = working_graph.get_edge(node, cand)
+                    if e and e.endpoint1 == Endpoint.CIRCLE and e.endpoint2 == Endpoint.CIRCLE:
+                        parents.append(cand.get_name())
+            X = df[parents].values if parents else np.empty((len(df), 0))
+            y = df[node_name].values
+            eq, r2 = pysr_reg._fit_pysr(X, y, {}, variable_names=parents or None)
+            structural_equations[node_name] = {
+                "equation": eq,
+                "r2": r2,
+                "parents": parents,
+            }
+
+        return {"structural_equations": structural_equations, "edge_tests": edge_tests}
+
+    pysr_reg.search_best_graph_climber = search_best_graph_climber
+    pysr_reg.symbolic_regression_causal_effect = symbolic_regression_causal_effect
+    pysr_reg._fit_pysr = _linear_fit
+
+    sys.modules["causal_pipe.pysr_regression"] = pysr_reg
     return pysr_reg
 
 

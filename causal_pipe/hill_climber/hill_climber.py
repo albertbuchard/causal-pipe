@@ -1,6 +1,7 @@
 # causal_pipe/graph_hill_climber.py
 
 import warnings
+from collections import defaultdict
 from typing import List, Tuple, Optional, Protocol, Set, Dict, Any
 
 from causallearn.graph.Edge import Edge
@@ -170,117 +171,113 @@ class GraphHillClimber:
             # Fit equivalence might be absent in the next iteration
             undirected_edges = []
 
-            # Iterate through each neighbor to evaluate and compare scores
-            for idx, neighbor in enumerate(neighbors):
-                # Evaluate the score of the neighbor graph, optionally comparing with the current graph
-                neighbor_score_fn_output = self.score_function(neighbor, current_graph)
+            # Group neighbors by the edge they modify
+            edge_groups: Dict[Tuple[int, int], List[int]] = defaultdict(list)
+            for idx, edge in enumerate(switched_edges):
+                key = tuple(sorted((nodes_map[edge.node1], nodes_map[edge.node2])))
+                edge_groups[key].append(idx)
 
-                if not isinstance(neighbor_score_fn_output, dict):
-                    raise ValueError(
-                        f"[{self.name}] The score function must return a dictionary with 'score' key."
+            # Evaluate neighbors group-wise
+            for group_indices in edge_groups.values():
+                changed_edge: Edge = switched_edges[group_indices[0]]
+                best_group_neighbor: Optional[GeneralGraph] = None
+                best_group_score = current_score
+
+                for idx in group_indices:
+                    neighbor = neighbors[idx]
+                    neighbor_score_fn_output = self.score_function(
+                        neighbor, current_graph
                     )
 
-                # Determine if the neighbor is a better model based on the scoring function
-                is_better_model = neighbor_score_fn_output.get("is_better_model")
+                    if not isinstance(neighbor_score_fn_output, dict):
+                        raise ValueError(
+                            f"[{self.name}] The score function must return a dictionary with 'score' key."
+                        )
 
-                if is_better_model is not None:
-                    if is_better_model == BETTER_MODEL_1:
-                        # If the neighbor model is better, check if its score is the best so far
-                        if neighbor_score_fn_output["score"] > best_score:
-                            best_score = neighbor_score_fn_output["score"]
-                            best_neighbor = neighbor
-                    elif is_better_model == NO_BETTER_MODEL:
-                        changed_edge: Edge = switched_edges[idx]
+                    is_better_model = neighbor_score_fn_output.get("is_better_model")
 
-                        # Prefer the neighbor on ties if the switched edge contains a circle endpoint
-                        if edge_has_circle_endpoint(changed_edge):
-                            if best_neighbor is None:
-                                best_neighbor = neighbor
-                                best_score = neighbor_score_fn_output["score"]
-                            continue
+                    if is_better_model is not None:
+                        if is_better_model == BETTER_MODEL_1:
+                            if neighbor_score_fn_output["score"] > best_group_score:
+                                best_group_score = neighbor_score_fn_output["score"]
+                                best_group_neighbor = neighbor
+                        elif is_better_model == NO_BETTER_MODEL:
+                            if edge_has_circle_endpoint(changed_edge):
+                                if best_group_neighbor is None:
+                                    best_group_neighbor = neighbor
+                                    best_group_score = neighbor_score_fn_output["score"]
+                                continue
 
-                        if not self.respect_pag:
-                            # Handle cases where the neighbor model is not directly better but might allow further exploration
-                            edge_in_neighbor = neighbor.get_edge(
-                                changed_edge.node1, changed_edge.node2
-                            )
-
-                            if edge_in_neighbor is None:
-                                raise ValueError(
-                                    f"[{self.name}] The edge should be present in the neighbor graph."
+                            if not self.respect_pag:
+                                edge_in_neighbor = neighbor.get_edge(
+                                    changed_edge.node1, changed_edge.node2
                                 )
-
-                            # Flags to determine the type of edge modification required
-                            should_make_undirected = False
-                            should_switch_current = False
-                            should_switch_neighbour = False
-
-                            is_better_model_undirected: Optional[int] = None
-
-                            # Determine the directionality of the edge in both current and neighbor graphs
-                            if is_edge_directed(changed_edge):
-                                if is_edge_directed(edge_in_neighbor):
-                                    should_make_undirected = True
-                                else:
-                                    should_switch_current = True
-                            else:
-                                if is_edge_directed(edge_in_neighbor):
-                                    should_switch_neighbour = True
-                                else:
+                                if edge_in_neighbor is None:
                                     raise ValueError(
-                                        f"[{self.name}] The edge should be directed in the neighbor graph."
+                                        f"[{self.name}] The edge should be present in the neighbor graph."
                                     )
-
-                            # Handle making the edge undirected if applicable
-                            if should_make_undirected:
-                                neighbor_undirected_edge = make_edge_undirected(
-                                    neighbor, changed_edge
-                                )
-                                neighbor_undirected_score_fn_output = self.score_function(
-                                    neighbor_undirected_edge, neighbor
-                                )
-                                is_better_model_undirected = (
-                                    neighbor_undirected_score_fn_output.get(
-                                        "is_better_model"
-                                    )
-                                )
-                            # Handle switching the direction of the edge
-                            elif should_switch_current or should_switch_neighbour:
-                                if should_switch_current:
-                                    neighbor_switched_edge = switch_directed_edge_in_graph(
-                                        current_graph, changed_edge
-                                    )
+                                should_make_undirected = False
+                                should_switch_current = False
+                                should_switch_neighbour = False
+                                is_better_model_undirected: Optional[int] = None
+                                if is_edge_directed(changed_edge):
+                                    if is_edge_directed(edge_in_neighbor):
+                                        should_make_undirected = True
+                                    else:
+                                        should_switch_current = True
                                 else:
-                                    neighbor_switched_edge = switch_directed_edge_in_graph(
-                                        neighbor, edge_in_neighbor
+                                    if is_edge_directed(edge_in_neighbor):
+                                        should_switch_neighbour = True
+                                    else:
+                                        raise ValueError(
+                                            f"[{self.name}] The edge should be directed in the neighbor graph."
+                                        )
+                                if should_make_undirected:
+                                    neighbor_undirected_edge = make_edge_undirected(
+                                        neighbor, changed_edge
                                     )
-                                neighbor_switched_score_fn_output = self.score_function(
-                                    neighbor_switched_edge, neighbor
-                                )
-                                is_better_model_undirected = (
-                                    neighbor_switched_score_fn_output.get(
+                                    neighbor_undirected_score_fn_output = self.score_function(
+                                        neighbor_undirected_edge, neighbor
+                                    )
+                                    is_better_model_undirected = neighbor_undirected_score_fn_output.get(
                                         "is_better_model"
                                     )
-                                )
+                                elif should_switch_current or should_switch_neighbour:
+                                    if should_switch_current:
+                                        neighbor_switched_edge = switch_directed_edge_in_graph(
+                                            current_graph, changed_edge
+                                        )
+                                    else:
+                                        neighbor_switched_edge = switch_directed_edge_in_graph(
+                                            neighbor, edge_in_neighbor
+                                        )
+                                    neighbor_switched_score_fn_output = self.score_function(
+                                        neighbor_switched_edge, neighbor
+                                    )
+                                    is_better_model_undirected = neighbor_switched_score_fn_output.get(
+                                        "is_better_model"
+                                    )
+                                if is_better_model_undirected is None:
+                                    warnings.warn(
+                                        f"[{self.name}] The score function must return a dictionary with 'is_better_model' key."
+                                    )
+                                if is_better_model_undirected == NO_BETTER_MODEL:
+                                    edge_node_idx = (
+                                        nodes_map[changed_edge.node1],
+                                        nodes_map[changed_edge.node2],
+                                    )
+                                    undirected_edges.append(edge_node_idx)
+                    else:
+                        raise ValueError(
+                            f"[{self.name}] The score function must return a dictionary with 'is_better_model' key."
+                        )
 
-                            # Ensure the score function provided the necessary key
-                            if is_better_model_undirected is None:
-                                warnings.warn(
-                                    f"[{self.name}] The score function must return a dictionary with 'is_better_model' key."
-                                )
-
-                            # If the undirected or switched edge leads to no better model, track it to avoid future modifications
-                            if is_better_model_undirected == NO_BETTER_MODEL:
-                                edge_node_idx = (
-                                    nodes_map[changed_edge.node1],
-                                    nodes_map[changed_edge.node2],
-                                )
-                                undirected_edges.append(edge_node_idx)
-                else:
-                    raise ValueError(
-                        f"[{self.name}] The score function must return a dictionary with 'is_better_model' key."
-                    )
-
+                if best_group_neighbor is not None:
+                    if best_group_score > best_score or (
+                        best_neighbor is None and best_group_score == best_score
+                    ):
+                        best_score = best_group_score
+                        best_neighbor = best_group_neighbor
             # If no better neighbor is found, terminate the hill-climbing process
             if best_neighbor is None:
                 print(
