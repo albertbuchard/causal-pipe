@@ -156,7 +156,8 @@ class PySRScore(ScoreFunction):
         sim_cfg = SimulatorConfig(
             noise_kind="gaussian",  # use 'bootstrap' if you want empirical tails
             alpha=0.3, tol=1e-6, max_iter=500, restarts=2,
-            standardized_init=False, seed=0, out_dir=self.out_dir
+            standardized_init=False, seed=0,
+            out_dir=self.out_dir
         )
 
         # Model 1

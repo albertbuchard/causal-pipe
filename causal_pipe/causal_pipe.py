@@ -853,6 +853,7 @@ class CausalPipe:
                             undirected_graph=self.undirected_graph,
                             df_columns=list(df.columns),
                             seed=self.seed,
+                            out_dir=out_dir
                         )
                         residuals, Omega, resid_rows = simulator.estimate_noise(
                             df
