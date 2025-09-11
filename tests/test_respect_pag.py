@@ -1,6 +1,7 @@
 import os
 import sys
 import types
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(ROOT)
@@ -192,7 +193,10 @@ from causallearn.graph.Edge import Edge
 from causallearn.graph.Endpoint import Endpoint
 import causal_pipe.utilities.graph_utilities as graph_utils
 importlib.reload(graph_utils)
-from causal_pipe.utilities.graph_utilities import get_neighbors_general_graph
+from causal_pipe.utilities.graph_utilities import (
+    get_neighbors_general_graph,
+    general_graph_to_sem_model,
+)
 import causal_pipe.hill_climber.hill_climber as hill_climber
 importlib.reload(hill_climber)
 from causal_pipe.hill_climber.hill_climber import GraphHillClimber
@@ -313,3 +317,13 @@ def test_hill_climber_better_model_wins_on_circle_edge():
     result = climber.run(graph, max_iter=1)
     edge = result.get_edge(a, b)
     assert edge.endpoint1 == Endpoint.TAIL and edge.endpoint2 == Endpoint.ARROW
+
+
+def test_general_graph_to_sem_model_errors_on_circle():
+    a = GraphNode("A")
+    b = GraphNode("B")
+    graph = GeneralGraph(nodes=[a, b])
+    graph.add_edge(Edge(a, b, Endpoint.CIRCLE, Endpoint.CIRCLE))
+
+    with pytest.raises(ValueError):
+        general_graph_to_sem_model(graph, on_circle="error")

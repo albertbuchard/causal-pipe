@@ -195,9 +195,16 @@ def edge_a_is_not_an_ancestor_b(edge: Edge) -> bool:
 def edge_has_circle_endpoint(edge: Edge) -> bool:
     """Return True if either endpoint of the edge is a PAG circle."""
     return (
-        edge.endpoint1 == Endpoint.CIRCLE
-        or edge.endpoint2 == Endpoint.CIRCLE
+        edge.endpoint1 == Endpoint.CIRCLE or edge.endpoint2 == Endpoint.CIRCLE
     )
+
+
+def has_circle_endpoints(general_graph: GeneralGraph) -> bool:
+    """Return True if any edge in the graph has a circle endpoint."""
+    for edge in general_graph.get_graph_edges():
+        if edge_has_circle_endpoint(edge):
+            return True
+    return False
 
 
 def edge_with_latent_common_cause(edge: Edge) -> bool:
@@ -265,7 +272,9 @@ def invert_edge(edge: Edge):
     )
 
 
-def general_graph_to_sem_model(general_graph: GeneralGraph) -> Tuple[str, List[str]]:
+def general_graph_to_sem_model(
+    general_graph: GeneralGraph, on_circle: str = "arrow"
+) -> Tuple[str, List[str]]:
     """
     Converts a GeneralGraph instance to a lavaan SEM model string.
     Adds variance to exogenous variables and residual covariances for undirected edges.
@@ -274,6 +283,10 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> Tuple[str, List[s
     ----------
     general_graph : GeneralGraph
         The input graph from which to derive the SEM model.
+    on_circle : str, optional
+        Behaviour when circle endpoints are present. If ``"error"`` and the graph
+        contains any circle endpoints, a :class:`ValueError` is raised. If ``"arrow"``
+        (the default), circle endpoints are treated as arrows.
 
     Returns
     -------
@@ -282,6 +295,11 @@ def general_graph_to_sem_model(general_graph: GeneralGraph) -> Tuple[str, List[s
     exogenous_variables : List[str]
         A list of exogenous variables (nodes with no incoming edges).
     """
+    if on_circle == "error" and has_circle_endpoints(general_graph):
+        raise ValueError(
+            "Unresolved PAG circles present after hill-climb; tie-breaker may be misconfigured."
+        )
+
     node_list = general_graph.get_nodes()
     node_names = [node.get_name() for node in node_list]
     exogenous_variables = set(node_names)
