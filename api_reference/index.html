@@ -610,6 +610,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pysrcausaleffectmethodhillclimbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      PYSRCausalEffectMethodHillClimbing
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -844,6 +853,48 @@
   <a href="#enumerations-explained" class="md-nav__link">
     <span class="md-ellipsis">
       Enumerations Explained
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pysr-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      PySR Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PySR Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symbolic_regression_causal_effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      symbolic_regression_causal_effect
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pysrscore-and-search_best_graph_climber_pysr" class="md-nav__link">
+    <span class="md-ellipsis">
+      PySRScore and search_best_graph_climber_pysr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cyclicscmsimulator" class="md-nav__link">
+    <span class="md-ellipsis">
+      CyclicSCMSimulator
     </span>
   </a>
   
@@ -1209,6 +1260,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pysrcausaleffectmethodhillclimbing" class="md-nav__link">
+    <span class="md-ellipsis">
+      PYSRCausalEffectMethodHillClimbing
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1453,6 +1513,48 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#pysr-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      PySR Integration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PySR Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#symbolic_regression_causal_effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      symbolic_regression_causal_effect
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pysrscore-and-search_best_graph_climber_pysr" class="md-nav__link">
+    <span class="md-ellipsis">
+      PySRScore and search_best_graph_climber_pysr
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cyclicscmsimulator" class="md-nav__link">
+    <span class="md-ellipsis">
+      CyclicSCMSimulator
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1485,6 +1587,14 @@
 <li><a href="#fciorientationmethod">FCIOrientationMethod</a></li>
 <li><a href="#hillclimbingorientationmethod">HillClimbingOrientationMethod</a></li>
 <li><a href="#causaleffectmethod">CausalEffectMethod</a></li>
+<li><a href="#pearsoncausaleffectmethod">PearsonCausalEffectMethod</a></li>
+<li><a href="#spearmancausaleffectmethod">SpearmanCausalEffectMethod</a></li>
+<li><a href="#micausaleffectmethod">MICausalEffectMethod</a></li>
+<li><a href="#kcicausaleffectmethod">KCICausalEffectMethod</a></li>
+<li><a href="#semcausaleffectmethod">SEMCausalEffectMethod</a></li>
+<li><a href="#semclimbingcausaleffectmethod">SEMClimbingCausalEffectMethod</a></li>
+<li><a href="#pysrcausaleffectmethod">PYSRCausalEffectMethod</a></li>
+<li><a href="#pysrcausaleffectmethodhillclimbing">PYSRCausalEffectMethodHillClimbing</a></li>
 </ul>
 </li>
 <li><a href="#semscore">SEMScore</a></li>
@@ -1606,7 +1716,7 @@
 <li><code>orientation_method</code> (<code>OrientationMethod</code>): Configuration for edge orientation methods.</li>
 <li><code>FCIOrientationMethod</code></li>
 <li><code>HillClimbingOrientationMethod</code></li>
-<li><code>causal_effect_methods</code> (<code>Optional[List[CausalEffectMethod]]</code>): List of methods for estimating causal effects (e.g., <code>CausalEffectMethod</code>).</li>
+<li><code>causal_effect_methods</code> (<code>Optional[List[CausalEffectMethod]]</code>): List of methods for estimating causal effects. Available classes include <code>PearsonCausalEffectMethod</code>, <code>SpearmanCausalEffectMethod</code>, <code>MICausalEffectMethod</code>, <code>KCICausalEffectMethod</code>, <code>SEMCausalEffectMethod</code>, <code>SEMClimbingCausalEffectMethod</code>, <code>PYSRCausalEffectMethod</code>, and <code>PYSRCausalEffectMethodHillClimbing</code>.</li>
 <li><code>study_name</code> (<code>str</code>): Unique identifier for the study.</li>
 <li><code>output_path</code> (<code>str</code>): Directory where results will be saved.</li>
 <li><code>show_plots</code> (<code>bool</code>): Whether to show plots.</li>
@@ -1910,12 +2020,25 @@ converts the instance into one of the specialised subclasses below.</p>
 <li><code>max_iter</code> (<code>int</code>, default <code>500</code>)</li>
 <li><code>restarts</code> (<code>int</code>, default <code>2</code>)</li>
 <li><code>standardized_init</code> (<code>bool</code>, default <code>False</code>)</li>
-<li><code>hc_orient_undirected_edges</code> (<code>bool</code>, default <code>True</code>)</li>
+<li><code>hc_orient_undirected_edges</code> (<code>bool</code>, default <code>False</code>)</li>
 <li><code>pysr_params</code> (<code>Dict[str, Any]</code>, default <code>{}</code>)</li>
 </ul>
 </li>
 </ul>
 <hr />
+<h4 id="pysrcausaleffectmethodhillclimbing">PYSRCausalEffectMethodHillClimbing</h4>
+<p>Symbolic regression using PySR with additional hill-climbing search to
+orient undirected edges.</p>
+<ul>
+<li><strong>Parameters:</strong><ul>
+<li><code>hc_orient_undirected_edges</code> (<code>bool</code>, default <code>True</code>)</li>
+<li><code>hc_max_iter</code> (<code>int</code>, default <code>100</code>)</li>
+<li><code>estimator</code> (<code>PySREstimatorEnum</code>, default <code>PySREstimatorEnum.MMDSQUARED</code>)</li>
+<li><code>respect_pag</code> (<code>bool</code>, default <code>True</code>)</li>
+<li><code>pysr_params</code> (<code>Dict[str, Any]</code>, default <code>{}</code>)</li>
+</ul>
+</li>
+</ul>
 <h3 id="semscore">SEMScore</h3>
 <p><strong><code>SEMScore</code></strong> is a class used to score graph structures based on Structural Equation Modeling (SEM) fits. It integrates with <strong>CausalPipe</strong> to evaluate the quality of causal graphs.</p>
 <h4 id="initialization_1">Initialization</h4>
@@ -2526,6 +2649,32 @@ class CausalPipeConfig(BaseModel):
 </li>
 <li><code>'pearson'</code>, <code>'spearman'</code>, <code>'mi'</code>, <code>'kci'</code>, <code>'sem'</code>, <code>'sem-climbing'</code>, <code>'pysr'</code>.</li>
 </ul>
+<h2 id="pysr-integration">PySR Integration</h2>
+<p>The package integrates with <a href="https://github.com/MilesCranmer/PySR">PySR</a>
+to learn nonlinear structural equations and to score graphs by simulating
+cyclic structural causal models (SCMs).</p>
+<h3 id="symbolic_regression_causal_effect"><code>symbolic_regression_causal_effect</code></h3>
+<pre><code class="language-python">symbolic_regression_causal_effect(
+    df: pd.DataFrame,
+    graph: GeneralGraph,
+    pysr_params: Optional[Dict] = None,
+) -&gt; PySRFitterOutput
+</code></pre>
+<p>Fits a symbolic regression model for each node using <code>PySRRegressor</code> and
+returns the learned equations together with the graph that was used for
+fitting.</p>
+<h3 id="pysrscore-and-search_best_graph_climber_pysr"><code>PySRScore</code> and <code>search_best_graph_climber_pysr</code></h3>
+<p><code>PySRScore</code> is a scoring function compatible with the hill-climbing
+utilities. It fits PySR equations for a candidate graph and evaluates
+them using either the Gaussian pseudo-likelihood or an unbiased
+maximum mean discrepancy (MMD<sup>2</sup>) estimator. The helper
+<code>search_best_graph_climber_pysr</code> performs hill climbing over graph
+structures with this score.</p>
+<h3 id="cyclicscmsimulator"><code>CyclicSCMSimulator</code></h3>
+<p>After fitting symbolic equations, <code>CyclicSCMSimulator</code> can simulate data
+from the nonlinear cyclic SCM and compute diagnostics such as
+pseudo-likelihood and MMD<sup>2</sup>. These diagnostics are used by the
+PySR hill climber and can also be saved for further analysis.</p>
 
 
 

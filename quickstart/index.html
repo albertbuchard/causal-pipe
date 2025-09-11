@@ -312,6 +312,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#4-estimating-nonlinear-mechanisms-with-pysr" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Estimating Nonlinear Mechanisms with PySR
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -415,6 +424,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#4-estimating-nonlinear-mechanisms-with-pysr" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Estimating Nonlinear Mechanisms with PySR
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -486,6 +504,19 @@ config = CausalPipeConfig(
 )
 
 </code></pre>
+<p>CausalPipe also ships with a range of specialized classes for each
+stage of the pipeline. You can mix and match these to suit your
+analysis:</p>
+<ul>
+<li><strong>Skeleton methods</strong>: <code>FASSkeletonMethod</code>, <code>BCSLSkeletonMethod</code></li>
+<li><strong>Orientation methods</strong>: <code>FCIOrientationMethod</code>,
+  <code>HillClimbingOrientationMethod</code></li>
+<li><strong>Causal effect methods</strong>: <code>PearsonCausalEffectMethod</code>,
+  <code>SpearmanCausalEffectMethod</code>, <code>MICausalEffectMethod</code>,
+  <code>KCICausalEffectMethod</code>, <code>SEMCausalEffectMethod</code>,
+  <code>SEMClimbingCausalEffectMethod</code>, <code>PYSRCausalEffectMethod</code>,
+  <code>PYSRCausalEffectMethodHillClimbing</code></li>
+</ul>
 <h2 id="2-initialize-causalpipe">2. Initialize CausalPipe</h2>
 <p>Initialize the CausalPipe toolkit by passing in the configuration:</p>
 <pre><code class="language-python">from causal_pipe import CausalPipe
@@ -502,6 +533,20 @@ data = pd.read_csv(&quot;your_data.csv&quot;)
 
 # Run the causal discovery pipeline
 causal_pipe.run_pipeline(data)
+</code></pre>
+<h2 id="4-estimating-nonlinear-mechanisms-with-pysr">4. Estimating Nonlinear Mechanisms with PySR</h2>
+<p><code>CausalPipe</code> can learn symbolic structural equations using
+<a href="https://github.com/MilesCranmer/PySR">PySR</a>. Enable it by adding the
+<code>pysr</code> causal effect method:</p>
+<pre><code class="language-python">from causal_pipe.pipe_config import PYSRCausalEffectMethod
+
+config.causal_effect_methods = [
+    PYSRCausalEffectMethod(hc_orient_undirected_edges=True)
+]
+
+causal_pipe = CausalPipe(config)
+results = causal_pipe.run_pipeline(data)
+print(results[&quot;pysr&quot;][&quot;structural_equations&quot;])
 </code></pre>
 <hr />
 <p>For more details on the API, see the <a href="../api_reference/">API Reference</a>.</p>

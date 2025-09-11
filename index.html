@@ -252,6 +252,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#configuration-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Classes
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -383,6 +392,15 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#configuration-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration Classes
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -407,7 +425,24 @@
 <li><strong>Causal Discovery</strong>: Construct causal graphs using methods like Fast Adjacency Search (FAS) or Bootstrap-based Causal Structure Learning (BCSL).</li>
 <li><strong>Edge Orientation</strong>: Use algorithms such as Fast Causal Inference (FCI) or Hill Climbing to orient edges in causal graphs.</li>
 <li><strong>Causal Effect Estimation</strong>: Estimate effects using methods such as Partial Correlation, Structural Equation Modeling (SEM), or kernel methods.</li>
+<li><strong>Symbolic Regression</strong>: Integrate <a href="https://github.com/MilesCranmer/PySR">PySR</a> to learn nonlinear structural equations and score cyclic models via pseudo-likelihood or MMD<sup>2</sup>.</li>
 <li><strong>Visualization</strong>: Visualize correlation graphs, causal graphs, and SEM results.</li>
+</ul>
+<h2 id="configuration-classes">Configuration Classes</h2>
+<p>CausalPipe is configured through a collection of dataclasses that define each
+step of the pipeline:</p>
+<ul>
+<li><strong>VariableTypes</strong> – declare continuous, ordinal, and nominal variables.</li>
+<li><strong>DataPreprocessingParams</strong> – control imputation, standardization, and
+  feature filtering.</li>
+<li><strong>Skeleton methods</strong> – <code>FASSkeletonMethod</code>, <code>BCSLSkeletonMethod</code>.</li>
+<li><strong>Orientation methods</strong> – <code>FCIOrientationMethod</code>,
+  <code>HillClimbingOrientationMethod</code>.</li>
+<li><strong>Causal effect methods</strong> – <code>PearsonCausalEffectMethod</code>,
+  <code>SpearmanCausalEffectMethod</code>, <code>MICausalEffectMethod</code>,
+  <code>KCICausalEffectMethod</code>, <code>SEMCausalEffectMethod</code>,
+  <code>SEMClimbingCausalEffectMethod</code>, <code>PYSRCausalEffectMethod</code>,
+  <code>PYSRCausalEffectMethodHillClimbing</code>.</li>
 </ul>
 
 
