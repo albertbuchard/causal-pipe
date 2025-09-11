@@ -822,6 +822,11 @@ class CausalPipe:
                         best_graph, best_score = search_best_graph_climber_pysr(
                             df,
                             initial_graph=graph,
+                            pysr_params=pysr_params,
+                            estimator=method.estimator,
+                            max_iter=method.hc_max_iter,
+                            respect_pag=method.respect_pag,
+                            out_dir=out_dir
                         )
                         self.causal_effects[method.name] = {
                             "final_graph": best_graph,
@@ -850,7 +855,7 @@ class CausalPipe:
                             seed=self.seed,
                         )
                         residuals, Omega, resid_rows = simulator.estimate_noise(
-                            df, out_dir
+                            df
                         )
                         sim_data, solver_stats = simulator.simulate(
                             df,

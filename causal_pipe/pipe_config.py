@@ -13,6 +13,8 @@ from pydantic import (
 
 from causallearn.utils.PCUtils.BackgroundKnowledge import BackgroundKnowledge
 
+from causal_pipe.pysr.pysr_hill_climber import PySREstimatorEnum
+
 
 # Define Enums for various configurable options
 
@@ -374,6 +376,8 @@ class PYSRCausalEffectMethodHillClimbing(PYSRCausalEffectMethod):
     """Symbolic regression using PySR with Hill Climbing orientation."""
 
     hc_orient_undirected_edges: bool = True
+    hc_max_iter: int = 100
+    estimator: PySREstimatorEnum = PySREstimatorEnum.MMDSQUARED
     respect_pag: bool = True
 
 

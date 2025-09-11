@@ -24,6 +24,7 @@ class CyclicSCMSimulator:
         undirected_graph: GeneralGraph,
         df_columns: List[str],
         seed: int = 0,
+        out_dir: str = ".",
     ) -> None:
         self.structural_equations = structural_equations
         self.undirected_graph = undirected_graph
@@ -33,6 +34,9 @@ class CyclicSCMSimulator:
             structural_equations, self.columns
         )
         self.components = self._build_components(undirected_graph, self.columns)
+        self.out_dir = out_dir
+        if out_dir:
+            os.makedirs(self.out_dir, exist_ok=True)
 
     @staticmethod
     def _parse_structural_equations(
@@ -110,7 +114,7 @@ class CyclicSCMSimulator:
         return components
 
     def estimate_noise(
-        self, df: pd.DataFrame, out_dir: str
+        self, df: pd.DataFrame
     ) -> Tuple[Dict[str, List[float]], Dict[Tuple[str, ...], np.ndarray], Dict[Tuple[str, ...], np.ndarray]]:
         residuals: Dict[str, List[float]] = {v: [] for v in self.columns}
         for _, row in df.iterrows():
@@ -158,7 +162,7 @@ class CyclicSCMSimulator:
             resid_rows[tuple(comp)] = Rc_f if Rc_f.size else np.zeros((1, k), float)
         dump_json_to(
             {"covariances": {",".join(k): v.tolist() for k, v in Omega.items()}},
-            os.path.join(out_dir, "pysr_cyclic_noise_covariances.json"),
+            os.path.join(self.out_dir, "pysr_cyclic_noise_covariances.json"),
         )
         return residuals, Omega, resid_rows
 
@@ -417,9 +421,10 @@ def fit_simulate_and_score(
         undirected_graph=graph,                 # components from the same graph
         df_columns=list(df.columns),
         seed=sim_cfg.seed,
+        out_dir=sim_cfg.out_dir
     )
     out_dir = sim_cfg.out_dir or "."
-    residuals, Omega, resid_rows = simulator.estimate_noise(df, out_dir)
+    residuals, Omega, resid_rows = simulator.estimate_noise(df)
     sim_data, solver_stats = simulator.simulate(
         df,
         Omega=Omega,

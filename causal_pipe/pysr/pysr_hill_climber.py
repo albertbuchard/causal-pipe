@@ -1,4 +1,5 @@
 import copy
+import os
 import warnings
 from enum import Enum
 from typing import Optional, Dict, List, Any, Tuple, Callable
@@ -30,6 +31,7 @@ class PySRScore(ScoreFunction):
         return_metrics: bool = False,
         fitter: Optional[PySRFitterType] = None,
         pysr_params: Optional[Dict[str, Any]] = None,
+        out_dir: Optional[str] = None,
     ):
         """
         Initializes the PySRScore with data and scoring parameters.
@@ -64,6 +66,9 @@ class PySRScore(ScoreFunction):
         self.return_metrics = return_metrics
         self.fitter = fitter or symbolic_regression_causal_effect
         self.pysr_params = pysr_params or {}
+        self.out_dir = out_dir
+        if self.out_dir:
+            os.makedirs(self.out_dir, exist_ok=True)
 
 
     def __call__(
@@ -151,7 +156,7 @@ class PySRScore(ScoreFunction):
         sim_cfg = SimulatorConfig(
             noise_kind="gaussian",  # use 'bootstrap' if you want empirical tails
             alpha=0.3, tol=1e-6, max_iter=500, restarts=2,
-            standardized_init=False, seed=0, out_dir="."
+            standardized_init=False, seed=0, out_dir=self.out_dir
         )
 
         # Model 1
@@ -217,6 +222,8 @@ def search_best_graph_climber_pysr(
     max_iter: int = 1000,
     estimator: str = PySREstimatorEnum.PSEUDOLIKELIHOOD,
     respect_pag: bool = True,
+    pysr_params=None,
+    out_dir: Optional[str] = None,
 ) -> Tuple[GeneralGraph, Dict[str, Any]]:
     """
     Searches for the best graph structure using hill-climbing based on PySR Cyclic SCM fitting.
@@ -249,7 +256,11 @@ def search_best_graph_climber_pysr(
 
     # Initialize SEMScore with the dataset and parameters
     scorer = PySRScore(
-        data=data, estimator=estimator, return_metrics=True
+        data=data,
+        estimator=estimator,
+        return_metrics=True,
+        pysr_params=pysr_params,
+        out_dir=out_dir
     )
     # Initialize the hill climber with the score function and neighbor generation function
     hill_climber = GraphHillClimber(

@@ -51,29 +51,29 @@ if __name__ == "__main__":
             # Simple pearson/spearman partial correlation
             # PearsonCausalEffectMethod(),
             # SpearmanCausalEffectMethod(),
-            # SEMClimbingCausalEffectMethod(estimator="ML",
-            #                               respect_pag=True,
-            #                               chain_orientation=True, # Next Causal Effect Method will use the best graph found here
-            #                               finalize_with_resid_covariances=False),
+            SEMClimbingCausalEffectMethod(estimator="MLR",
+                                          respect_pag=True,
+                                          chain_orientation=True, # Next Causal Effect Method will use the best graph found here
+                                          finalize_with_resid_covariances=False),
             # PySR-based Causal Effect estimation
-            # PYSRCausalEffectMethod(
-            #     pysr_params={
-            #         "niterations": 100,
-            #         "population_size": 100,
-            #         "maxsize": 10,
-            #         "binary_operators": ["+", "-", "*", "/", "pow"],
-            #         "unary_operators": ["exp", "log", "sin", "cos", "inv"],
-            #     },
-            # ),
-            PYSRCausalEffectMethodHillClimbing(
+            PYSRCausalEffectMethod(
                 pysr_params={
-                        "niterations": 20,
-                        "population_size": 100,
-                        "maxsize": 10,
-                        "binary_operators": ["+", "-", "*", "/", "pow"],
-                        "unary_operators": ["exp", "log", "sin", "cos", "inv"],
-                    },
-            )
+                    "niterations": 100,
+                    "population_size": 100,
+                    "maxsize": 10,
+                    "binary_operators": ["+", "-", "*", "/", "pow"],
+                    "unary_operators": ["exp", "log", "sin", "cos", "inv"],
+                },
+            ),
+            # PYSRCausalEffectMethodHillClimbing(
+            #     pysr_params={
+            #             "niterations": 20,
+            #             "population_size": 100,
+            #             "maxsize": 10,
+            #             "binary_operators": ["+", "-", "*", "/", "pow"],
+            #             "unary_operators": ["exp", "log", "sin", "cos", "inv"],
+            #         },
+            # )
         ],
         study_name="pipe_super_basic_dataset",
         output_path="./output/",
