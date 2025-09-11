@@ -14,20 +14,21 @@
   - [1. Configuration](#1-configuration)
   - [2. Initializing CausalPipe](#2-initializing-causalpipe)
   - [3. Running the Causal Discovery Pipeline](#3-running-the-causal-discovery-pipeline)
-- [Usage Examples](#usage-examples)
-  - [Example: Running the Full Pipeline](#example-running-the-full-pipeline)
-  - [Example: Custom Configuration](#example-custom-configuration)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+  - [Usage Examples](#usage-examples)
+    - [Example: Running the Full Pipeline](#example-running-the-full-pipeline)
+    - [Example: Custom Configuration](#example-custom-configuration)
+    - [Example: Symbolic Regression with PySR](#example-symbolic-regression-with-pysr)
+  - [Documentation](#documentation)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Contact](#contact)
 
 ## Features
 
 - **Data Preprocessing:** Handle missing values using multiple imputation (`MICE`), encode categorical variables, standardize features, and perform feature selection based on correlation.
 - **Skeleton Identification:** Identify the global skeleton of the causal graph using methods like Fast Adjacency Search (`FAS`) or Bootstrap-based Causal Structure Learning (`BCSL`).
 - **Edge Orientation:** Orient edges in the skeleton using algorithms such as Fast Causal Inference (`FCI`) or Hill Climbing.
-- **Causal Effect Estimation:** Estimate causal effects using various methods, including Partial Pearson Correlation, Partial Spearman Correlation, Conditional Mutual Information (`MI`), Kernel Conditional Independence (`KCI`), Structural Equation Modeling (`SEM`), Hill Climbing-based SEM, and PySR-based symbolic regression that infers structural equations and can optionally orient remaining undirected edges via SEM hill climbing or treat them as exogenous parents.
+- **Causal Effect Estimation:** Estimate causal effects using methods such as Partial Pearson/Spearman correlations, Conditional Mutual Information (`MI`), Kernel Conditional Independence (`KCI`), Structural Equation Modeling (`SEM`), hill-climbing SEM, and PySR-based symbolic regression that learns nonlinear structural equations and can score cyclic models via pseudo-likelihood or MMD².
 - **Visualization:** Generate and save visualizations for correlation graphs, skeletons, oriented graphs, and SEM results.
 - **Modular Configuration:** Easily configure different aspects of the pipeline through dataclasses, allowing for flexible and customizable causal discovery workflows.
 - **Integration with R:** Utilize R's `lavaan` package for advanced Structural Equation Modeling directly within Python using `rpy2`.
@@ -109,6 +110,22 @@ config = CausalPipeConfig(
 )
 
 ```
+
+CausalPipe exposes several configuration dataclasses that can be combined
+as needed:
+
+- **Variables & preprocessing**: `VariableTypes`, `DataPreprocessingParams`
+- **Skeleton methods**: `FASSkeletonMethod`, `BCSLSkeletonMethod`
+- **Orientation methods**: `FCIOrientationMethod`,
+  `HillClimbingOrientationMethod`
+- **Causal effect methods**: `PearsonCausalEffectMethod`,
+  `SpearmanCausalEffectMethod`, `MICausalEffectMethod`,
+  `KCICausalEffectMethod`, `SEMCausalEffectMethod`,
+  `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`,
+  `PYSRCausalEffectMethodHillClimbing`
+
+For a complete list and detailed field descriptions, see the
+[API Reference](https://albertbuchard.github.io/causal-pipe/api_reference/).
 
 ### 2. Initializing CausalPipe
 
@@ -221,9 +238,29 @@ causal_pipe.run_pipeline(data)
 print("Causal Effects:", causal_pipe.causal_effects)
 ```
 
+### Example: Symbolic Regression with PySR
+
+Learn nonlinear structural equations and optionally orient undirected
+edges using PySR's symbolic regression engine:
+
+```python
+from causal_pipe.pipe_config import PYSRCausalEffectMethod
+
+config.causal_effect_methods = [
+    PYSRCausalEffectMethod(hc_orient_undirected_edges=True)
+]
+
+causal_pipe = CausalPipe(config)
+results = causal_pipe.run_pipeline(data)
+print(results["pysr"]["structural_equations"])
+```
+
+See [`examples/pysr_example.py`](examples/pysr_example.py) for a complete
+walkthrough.
+
 ## Documentation
 
-Comprehensive documentation is available to help you get started with CausalPipe and explore its full range of functionalities. Visit the [CausalPipe Documentation](https://albertbuchard.github.io/causal-pipe/) for detailed guides, API references, and tutorials.
+Comprehensive documentation is available to help you get started with CausalPipe and explore its full range of functionalities. Visit the [CausalPipe Documentation](https://albertbuchard.github.io/causal-pipe/) for tutorials and guides, and consult the [API Reference](https://albertbuchard.github.io/causal-pipe/api_reference/) for detailed class descriptions.
 
 ## Contributing
 
