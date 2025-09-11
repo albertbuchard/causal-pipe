@@ -195,8 +195,8 @@ def edge_a_is_not_an_ancestor_b(edge: Edge) -> bool:
 def edge_has_circle_endpoint(edge: Edge) -> bool:
     """Return True if either endpoint of the edge is a PAG circle."""
     return (
-        edge.get_endpoint(edge.node1) == Endpoint.CIRCLE
-        or edge.get_endpoint(edge.node2) == Endpoint.CIRCLE
+        edge.endpoint1 == Endpoint.CIRCLE
+        or edge.endpoint2 == Endpoint.CIRCLE
     )
 
 
@@ -411,8 +411,6 @@ def get_all_directed_edges_list(graph: GeneralGraph) -> List[Tuple[int, int]]:
                 if (
                     graph.is_directed_from_to(edge_node_1, edge_node_2)
                     or graph.is_directed_from_to(edge_node_2, edge_node_1)
-                    or edge_b_is_not_an_ancestor_a(edge)
-                    or edge_a_is_not_an_ancestor_b(edge)
                 ):
                     directed_edges.append((i, j))
             else:
