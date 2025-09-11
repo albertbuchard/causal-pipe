@@ -11,7 +11,12 @@ from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.graph.GraphNode import GraphNode
 
 from causal_pipe.causal_pipe import CausalPipeConfig
-from causal_pipe.pipe_config import VariableTypes, CausalEffectMethod, FASSkeletonMethod
+from causal_pipe.pipe_config import (
+    VariableTypes,
+    SEMCausalEffectMethod,
+    SEMClimbingCausalEffectMethod,
+    FASSkeletonMethod,
+)
 from examples.utilities import compare_pipelines
 
 
@@ -102,11 +107,12 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     config.study_name = "pipe_easy_dataset_with_ordinal"
     config.causal_effect_methods = [
         # For ordinal data
-        CausalEffectMethod(name="sem", directed=True),
-        CausalEffectMethod(name="sem-climbing", directed=True,
-                           params={"estimator": "ML",
-                                   "respect_pag": True,
-                                   "finalize_with_resid_covariances": True}),
+        SEMCausalEffectMethod(),
+        SEMClimbingCausalEffectMethod(
+            estimator="ML",
+            respect_pag=True,
+            finalize_with_resid_covariances=True,
+        ),
     ]
     config.preprocessing_params.keep_only_correlated_with = ["Var0", "Var5"]
     config.preprocessing_params.filter_method = "spearman"

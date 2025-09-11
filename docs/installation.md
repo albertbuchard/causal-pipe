@@ -29,6 +29,7 @@ npeet-plus==0.2.0
 networkx==3.2.1
 pandas==2.2.3
 factor_analyzer==0.5.1
+pysr>=0.19.0  # optional, required for symbolic regression
 ```
 
 #### R Packages:
@@ -36,3 +37,7 @@ factor_analyzer==0.5.1
 - `mice` (for multiple imputation)
 
 Ensure that R is properly installed on your system and the necessary packages are available.
+
+For symbolic regression and PySR-based features you also need a working
+Julia installation. See the [PySR documentation](https://pysr.readthedocs.io/)
+for details on setting up Julia and its dependencies.

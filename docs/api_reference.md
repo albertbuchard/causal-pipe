@@ -16,6 +16,14 @@ Welcome to the **CausalPipe** API Reference. This section provides detailed info
       - [FCIOrientationMethod](#fciorientationmethod)
       - [HillClimbingOrientationMethod](#hillclimbingorientationmethod)
     - [CausalEffectMethod](#causaleffectmethod)
+      - [PearsonCausalEffectMethod](#pearsoncausaleffectmethod)
+      - [SpearmanCausalEffectMethod](#spearmancausaleffectmethod)
+      - [MICausalEffectMethod](#micausaleffectmethod)
+      - [KCICausalEffectMethod](#kcicausaleffectmethod)
+      - [SEMCausalEffectMethod](#semcausaleffectmethod)
+      - [SEMClimbingCausalEffectMethod](#semclimbingcausaleffectmethod)
+      - [PYSRCausalEffectMethod](#pysrcausaleffectmethod)
+      - [PYSRCausalEffectMethodHillClimbing](#pysrcausaleffectmethodhillclimbing)
   - [SEMScore](#semscore)
 - [Functions](#functions)
   - [fit_sem_lavaan](#fit_sem_lavaan)
@@ -124,7 +132,7 @@ Retrieves the names of ordinal and nominal variables.
 - `orientation_method` (`OrientationMethod`): Configuration for edge orientation methods.
   - `FCIOrientationMethod`
   - `HillClimbingOrientationMethod`
-- `causal_effect_methods` (`Optional[List[CausalEffectMethod]]`): List of methods for estimating causal effects (e.g., `CausalEffectMethod`).
+ - `causal_effect_methods` (`Optional[List[CausalEffectMethod]]`): List of methods for estimating causal effects. Available classes include `PearsonCausalEffectMethod`, `SpearmanCausalEffectMethod`, `MICausalEffectMethod`, `KCICausalEffectMethod`, `SEMCausalEffectMethod`, `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`, and `PYSRCausalEffectMethodHillClimbing`.
 - `study_name` (`str`): Unique identifier for the study.
 - `output_path` (`str`): Directory where results will be saved.
 - `show_plots` (`bool`): Whether to show plots.
@@ -377,10 +385,22 @@ Symbolic regression using PySR.
     - `max_iter` (`int`, default `500`)
     - `restarts` (`int`, default `2`)
     - `standardized_init` (`bool`, default `False`)
-    - `hc_orient_undirected_edges` (`bool`, default `True`)
+    - `hc_orient_undirected_edges` (`bool`, default `False`)
     - `pysr_params` (`Dict[str, Any]`, default `{}`)
 
 ---
+
+#### PYSRCausalEffectMethodHillClimbing
+
+Symbolic regression using PySR with additional hill-climbing search to
+orient undirected edges.
+
+- **Parameters:**
+    - `hc_orient_undirected_edges` (`bool`, default `True`)
+    - `hc_max_iter` (`int`, default `100`)
+    - `estimator` (`PySREstimatorEnum`, default `PySREstimatorEnum.MMDSQUARED`)
+    - `respect_pag` (`bool`, default `True`)
+    - `pysr_params` (`Dict[str, Any]`, default `{}`)
 
 
 ### SEMScore
@@ -1010,3 +1030,39 @@ class CausalPipeConfig(BaseModel):
 
 - **`CausalEffectMethodNameEnum`**: Names of methods for estimating causal effects.
   - `'pearson'`, `'spearman'`, `'mi'`, `'kci'`, `'sem'`, `'sem-climbing'`, `'pysr'`.
+
+## PySR Integration
+
+The package integrates with [PySR](https://github.com/MilesCranmer/PySR)
+to learn nonlinear structural equations and to score graphs by simulating
+cyclic structural causal models (SCMs).
+
+### `symbolic_regression_causal_effect`
+
+```python
+symbolic_regression_causal_effect(
+    df: pd.DataFrame,
+    graph: GeneralGraph,
+    pysr_params: Optional[Dict] = None,
+) -> PySRFitterOutput
+```
+
+Fits a symbolic regression model for each node using `PySRRegressor` and
+returns the learned equations together with the graph that was used for
+fitting.
+
+### `PySRScore` and `search_best_graph_climber_pysr`
+
+`PySRScore` is a scoring function compatible with the hill-climbing
+utilities. It fits PySR equations for a candidate graph and evaluates
+them using either the Gaussian pseudo-likelihood or an unbiased
+maximum mean discrepancy (MMD<sup>2</sup>) estimator. The helper
+`search_best_graph_climber_pysr` performs hill climbing over graph
+structures with this score.
+
+### `CyclicSCMSimulator`
+
+After fitting symbolic equations, `CyclicSCMSimulator` can simulate data
+from the nonlinear cyclic SCM and compute diagnostics such as
+pseudo-likelihood and MMD<sup>2</sup>. These diagnostics are used by the
+PySR hill climber and can also be saved for further analysis.

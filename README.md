@@ -110,6 +110,18 @@ config = CausalPipeConfig(
 
 ```
 
+CausalPipe exposes several other configuration classes that can be
+combined as needed:
+
+- **Skeleton methods**: `FASSkeletonMethod`, `BCSLSkeletonMethod`
+- **Orientation methods**: `FCIOrientationMethod`,
+  `HillClimbingOrientationMethod`
+- **Causal effect methods**: `PearsonCausalEffectMethod`,
+  `SpearmanCausalEffectMethod`, `MICausalEffectMethod`,
+  `KCICausalEffectMethod`, `SEMCausalEffectMethod`,
+  `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`,
+  `PYSRCausalEffectMethodHillClimbing`
+
 ### 2. Initializing CausalPipe
 
 Create an instance of the `CausalPipe` class by passing the configuration object.
