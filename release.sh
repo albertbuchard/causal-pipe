@@ -97,11 +97,12 @@ rm -rf build dist *.egg-info
 python -m pip install -U pip setuptools wheel build twine pdoc mkdocs mkdocs-material
 
 # Regenerate API documentation
-pdoc --force --format markdown causal_pipe > docs/api_reference.md
-test -s docs/api_reference.md
+pdoc -d google -o docs/api_reference causal_pipe
+test -s docs/api_reference/index.html
 
-# Validate documentation builds without warnings
+# Build the website → outputs to site/
 mkdocs build --strict
+mkdocs gh-deploy
 
 # Build sdist + wheel
 python -m build
