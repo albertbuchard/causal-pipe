@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any, Tuple, Literal
 
 from pydantic import (
     BaseModel,
@@ -128,6 +128,60 @@ class DataPreprocessingParams(BaseModel):
         if not (0.0 <= v <= 1.0):
             raise ValueError("filter_threshold must be between 0.0 and 1.0")
         return v
+
+    class Config:
+        validate_assignment = True
+
+
+class TemporalConfig(BaseModel):
+    """
+    Configuration for time-varying causal discovery.
+
+    Temporal mode converts a single time series or panel/repeated-measures
+    dataset into a lag-expanded table before the ordinary CausalPipe workflow
+    runs. Columns are generated with names like ``x__t`` and ``x__lag1`` so
+    existing skeleton, orientation, and causal-effect methods can operate on
+    temporal nodes without changing their public APIs.
+
+    Attributes:
+        time_col: Column containing observation time or ordering.
+        id_col: Optional individual/unit identifier for panel data.
+        lags: Positive integer lag distances to include.
+        variables: Optional subset of variables to expand. Defaults to all
+            variables declared in ``VariableTypes``.
+        allow_contemporaneous_edges: Whether edges among current-time nodes are
+            allowed.
+        force_autoregressive_edges: Whether ``x__lag1 -> x__t`` should be
+            required for each variable when lag 1 is present.
+        drop_rows_with_incomplete_lags: Whether rows without all requested lag
+            values are dropped before causal discovery.
+        within_person_center: If True, panel variables are person-mean centered
+            before lag expansion.
+        include_between_person_means: If True, add subject mean columns such as
+            ``x__between``.
+        bootstrap_unit: Optional temporal bootstrap mode. Defaults to
+            ``cluster`` for panel data and ``block`` for single time series.
+    """
+
+    time_col: str
+    id_col: Optional[str] = None
+    lags: List[int] = Field(default_factory=lambda: [1])
+    variables: Optional[List[str]] = None
+    allow_contemporaneous_edges: bool = True
+    force_autoregressive_edges: bool = False
+    drop_rows_with_incomplete_lags: bool = True
+    within_person_center: bool = False
+    include_between_person_means: bool = False
+    bootstrap_unit: Optional[Literal["row", "block", "cluster"]] = None
+
+    @field_validator("lags")
+    @classmethod
+    def check_lags(cls, v):
+        if not v:
+            raise ValueError("lags must contain at least one positive integer")
+        if any((not isinstance(lag, int)) or lag <= 0 for lag in v):
+            raise ValueError("lags must contain only positive integers")
+        return sorted(set(v))
 
     class Config:
         validate_assignment = True
@@ -408,6 +462,7 @@ class CausalPipeConfig(BaseModel):
     causal_effect_methods: Optional[List[CausalEffectMethod]] = Field(
         default_factory=lambda: [CausalEffectMethod()]
     )
+    temporal_config: Optional[TemporalConfig] = None
     study_name: str = Field(default_factory=lambda: f"study_{uuid.uuid4()}")
     output_path: str = "./output/causal_toolkit_results"
     show_plots: bool = True

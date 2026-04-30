@@ -26,6 +26,7 @@
 ## Features
 
 - **Data Preprocessing:** Handle missing values using multiple imputation (`MICE`), encode categorical variables, standardize features, and perform feature selection based on correlation.
+- **Temporal Data:** Build lag-expanded graphs for single time series and repeated-measures panel data with temporal background knowledge.
 - **Skeleton Identification:** Identify the global skeleton of the causal graph using methods like Fast Adjacency Search (`FAS`) or Bootstrap-based Causal Structure Learning (`BCSL`).
 - **Edge Orientation:** Orient edges in the skeleton using algorithms such as Fast Causal Inference (`FCI`) or Hill Climbing.
 - **Causal Effect Estimation:** Estimate causal effects using methods such as Partial Pearson/Spearman correlations, Conditional Mutual Information (`MI`), Kernel Conditional Independence (`KCI`), Structural Equation Modeling (`SEM`), hill-climbing SEM, and PySR-based symbolic regression that learns nonlinear structural equations and can score cyclic models via pseudo-likelihood or MMD².
@@ -250,12 +251,45 @@ config.causal_effect_methods = [
 ]
 
 causal_pipe = CausalPipe(config)
-results = causal_pipe.run_pipeline(data)
-print(results["pysr"]["structural_equations"])
+causal_pipe.run_pipeline(data)
+print(causal_pipe.causal_effects["pysr"]["structural_equations"])
 ```
 
 See [`examples/pysr_example.py`](examples/pysr_example.py) for a complete
 walkthrough.
+
+### Example: Time-Varying Data
+
+For one time series or repeated-measures panel data, add `TemporalConfig`.
+CausalPipe will create lagged nodes such as `stress__lag1` and `mood__t`,
+apply temporal background knowledge, and run the usual FAS/FCI pipeline.
+
+```python
+from causal_pipe.pipe_config import TemporalConfig
+
+config = CausalPipeConfig(
+    variable_types=VariableTypes(
+        continuous=["stress", "sleep", "mood"],
+    ),
+    skeleton_method=FASSkeletonMethod(),
+    orientation_method=FCIOrientationMethod(),
+    causal_effect_methods=[PearsonCausalEffectMethod()],
+    temporal_config=TemporalConfig(
+        id_col="person_id",  # omit for a single time series
+        time_col="week",
+        lags=[1, 2],
+        within_person_center=True,
+    ),
+    show_plots=False,
+)
+
+causal_pipe = CausalPipe(config)
+causal_pipe.run_pipeline(data)
+print(causal_pipe.temporal_metadata)
+```
+
+See the temporal data guide in the documentation for cross-sectional,
+single-series, and repeated-measures setup details.
 
 ## Documentation
 
@@ -303,7 +337,7 @@ For any questions or suggestions, feel free to reach out:
 ### Additional Notes
 
 - **Visualization Outputs:** Ensure that the output directory specified in the configuration exists or is created by CausalPipe. The toolkit will save visualizations like correlation graphs, skeletons, oriented graphs, and SEM results in the specified `output_path`.
-  
+
 - **R Package Dependencies:** Since CausalPipe integrates with R's `lavaan` and `mice` packages, make sure that R is installed on your system and that these packages are accessible. The toolkit attempts to install missing R packages automatically, but you may need to configure R's library paths or permissions accordingly.
 
 - **Error Handling:** The toolkit includes error handling to catch and report issues during data preprocessing, model fitting, and causal effect estimation. Pay attention to console outputs for any warnings or error messages that may require your attention.
@@ -313,4 +347,3 @@ For any questions or suggestions, feel free to reach out:
 - **Performance Considerations:** Some methods, especially those involving multiple imputation or complex SEM models, can be computationally intensive. Ensure that your system has sufficient resources, and consider optimizing parameters like `num_bootstrap_samples` or `max_iter` based on your dataset's size and complexity.
 
 By following this guide and leveraging the provided examples, you can effectively utilize **CausalPipe** to perform sophisticated causal discovery and analysis on your datasets.
- 

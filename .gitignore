@@ -141,6 +141,7 @@ dmypy.json
 # Other files
 .DS_Store
 Thumbs.db
+.vision/
 
 # Logs
 *.log

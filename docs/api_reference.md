@@ -6,11 +6,12 @@ Welcome to the **CausalPipe** API Reference. This section provides detailed info
 
 - [Classes](#classes)
   - [CausalPipe](#causalpipe)
-  - [CausalPipeConfig](#causalpipeconfig)
-    - [VariableTypes](#variabletypes)
-    - [DataPreprocessingParams](#datapreprocessingparams)
-    - [SkeletonMethod](#skeletonmethod)
-      - [BCSLSkeletonMethod](#bcslmethod)
+	  - [CausalPipeConfig](#causalpipeconfig)
+	    - [VariableTypes](#variabletypes)
+	    - [DataPreprocessingParams](#datapreprocessingparams)
+	    - [TemporalConfig](#temporalconfig)
+	    - [SkeletonMethod](#skeletonmethod)
+	      - [BCSLSkeletonMethod](#bcslskeletonmethod)
       - [FASSkeletonMethod](#fasskeletonmethod)
     - [OrientationMethod](#orientationmethod)
       - [FCIOrientationMethod](#fciorientationmethod)
@@ -132,7 +133,8 @@ Retrieves the names of ordinal and nominal variables.
 - `orientation_method` (`OrientationMethod`): Configuration for edge orientation methods.
   - `FCIOrientationMethod`
   - `HillClimbingOrientationMethod`
- - `causal_effect_methods` (`Optional[List[CausalEffectMethod]]`): List of methods for estimating causal effects. Available classes include `PearsonCausalEffectMethod`, `SpearmanCausalEffectMethod`, `MICausalEffectMethod`, `KCICausalEffectMethod`, `SEMCausalEffectMethod`, `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`, and `PYSRCausalEffectMethodHillClimbing`.
+- `causal_effect_methods` (`Optional[List[CausalEffectMethod]]`): List of methods for estimating causal effects. Available classes include `PearsonCausalEffectMethod`, `SpearmanCausalEffectMethod`, `MICausalEffectMethod`, `KCICausalEffectMethod`, `SEMCausalEffectMethod`, `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`, and `PYSRCausalEffectMethodHillClimbing`.
+- `temporal_config` (`Optional[TemporalConfig]`, default `None`): Optional temporal setup for lag-expanded single-series or panel data.
 - `study_name` (`str`): Unique identifier for the study.
 - `output_path` (`str`): Directory where results will be saved.
 - `show_plots` (`bool`): Whether to show plots.
@@ -181,6 +183,31 @@ Retrieves the names of ordinal and nominal variables.
 
 - **Validations:**
     - `filter_threshold` must be between `0.0` and `1.0`.
+
+---
+
+#### TemporalConfig
+
+**`TemporalConfig`** enables time-varying causal discovery by converting long-format temporal data into lag-expanded variables before the ordinary CausalPipe workflow runs.
+
+- **Attributes:**
+    - `time_col` (`str`): Column used to sort observations within the series or individual.
+    - `id_col` (`Optional[str]`, default `None`): Optional individual, subject, device, or panel-unit identifier.
+    - `lags` (`List[int]`, default `[1]`): Positive integer lag distances to generate.
+    - `variables` (`Optional[List[str]]`, default `None`): Optional subset of declared variables to expand. If omitted, all variables in `VariableTypes` are used.
+    - `allow_contemporaneous_edges` (`bool`, default `True`): Whether current-time nodes such as `x__t` and `y__t` may be connected.
+    - `force_autoregressive_edges` (`bool`, default `False`): Whether edges like `x__lag1 -> x__t` should be required.
+    - `drop_rows_with_incomplete_lags` (`bool`, default `True`): Whether rows missing requested lag values are dropped before discovery.
+    - `within_person_center` (`bool`, default `False`): Whether panel variables are person-mean centered before lag expansion. Requires `id_col` and continuous variables.
+    - `include_between_person_means` (`bool`, default `False`): Whether subject mean columns like `x__between` are added. Requires `id_col`.
+    - `bootstrap_unit` (`Optional[Literal["row", "block", "cluster"]]`, default `None`): Bootstrap strategy override. Defaults to `cluster` for panel data and `block` for single time series.
+
+- **Generated Runtime Metadata:**
+    - `CausalPipe.temporal_metadata`: Summary written to `temporal_metadata.json`.
+    - `CausalPipe.temporal_background_knowledge`: The merged temporal background knowledge used by FAS/FCI.
+    - `CausalPipe.lagged_column_map`: Mapping from original variables to generated columns.
+
+Temporal mode currently supports FAS skeleton discovery with FCI orientation. BCSL temporal skeleton discovery raises `NotImplementedError`.
 
 ---
 
