@@ -51,7 +51,7 @@ def compare_easy_dataset(config: CausalPipeConfig):
     Var3 = 2 * Var1 + np.random.normal(0, 1, n_samples)  # Var3 depends on Var1
     Var4 = 0.5 * Var2 + np.random.normal(0, 1, n_samples)  # Var4 depends on Var2
     Var5 = (
-        Var3 + Var4 + np.random.normal(0, 1, n_samples)
+        Var3 - 4*Var4 + np.random.normal(0, 1, n_samples)
     )  # Var5 depends on Var3 and Var4
     data = pd.DataFrame(
         {
