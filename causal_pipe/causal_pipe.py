@@ -8,6 +8,7 @@ import pandas as pd
 from bcsl.bcsl import BCSL
 from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
 from causallearn.graph.GeneralGraph import GeneralGraph
+from causallearn.utils.PCUtils.BackgroundKnowledge import BackgroundKnowledge
 from causallearn.utils.FAS import fas
 from causallearn.utils.cit import CIT
 
