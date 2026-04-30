@@ -8,6 +8,7 @@ Welcome to the documentation for **CausalPipe**, a Python package that simplifie
 - **Edge Orientation**: Use algorithms such as Fast Causal Inference (FCI) or Hill Climbing to orient edges in causal graphs.
 - **Causal Effect Estimation**: Estimate effects using methods such as Partial Correlation, Structural Equation Modeling (SEM), or kernel methods.
 - **Symbolic Regression**: Integrate [PySR](https://github.com/MilesCranmer/PySR) to learn nonlinear structural equations and score cyclic models via pseudo-likelihood or MMD<sup>2</sup>.
+- **Temporal Data**: Build lag-expanded graphs for single time series or repeated-measures panel data using `TemporalConfig`.
 - **Visualization**: Visualize correlation graphs, causal graphs, and SEM results.
 
 ## Configuration Classes
@@ -26,3 +27,7 @@ step of the pipeline:
   `KCICausalEffectMethod`, `SEMCausalEffectMethod`,
   `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`,
   `PYSRCausalEffectMethodHillClimbing`.
+- **Temporal mode** – `TemporalConfig` adds lag expansion, temporal
+  background knowledge, and temporal bootstrap defaults for time-varying data.
+
+For longitudinal or time-series workflows, see [Temporal Data](temporal.md).

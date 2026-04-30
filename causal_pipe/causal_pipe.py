@@ -27,6 +27,11 @@ from causal_pipe.sem.sem import (
 )
 from causal_pipe.causal_discovery.fas_bootstrap import bootstrap_fas_edge_stability
 from causal_pipe.causal_discovery.bootstrap_utils import make_graph
+from causal_pipe.temporal import (
+    clone_background_knowledge,
+    expand_temporal_data,
+    merge_temporal_background_knowledge,
+)
 from causal_pipe.utilities.graph_utilities import (
     copy_graph,
     unify_edge_types_directed_undirected,
@@ -86,12 +91,14 @@ class CausalPipe:
         if isinstance(config.variable_types, dict):
             config.variable_types = VariableTypes(**config.variable_types)
         self.variable_types = config.variable_types
+        self.base_variable_types = self.variable_types.model_copy(deep=True)
         self.filtered_variables = []
 
         # Method configurations
         self.preprocessing_params = config.preprocessing_params
         self.skeleton_method = config.skeleton_method
         self.orientation_method = config.orientation_method
+        self.temporal_config = config.temporal_config
         self.causal_effect_methods = [
             self._convert_causal_effect_method(m)
             for m in (config.causal_effect_methods or [])
@@ -120,6 +127,13 @@ class CausalPipe:
         self.sepsets: Dict[Tuple[int, int], Set[int]] = {}
         self.directed_graph: Optional[GeneralGraph] = None
         self.causal_effects: Dict[str, Any] = {}
+        self.temporal_metadata: Dict[str, Any] = {}
+        self.temporal_background_knowledge: Optional[BackgroundKnowledge] = None
+        self.temporal_background_knowledge_constraints: Dict[str, Any] = {}
+        self.lagged_column_map: Dict[str, Dict[str, str]] = {}
+        self.temporal_bootstrap_unit: Optional[str] = None
+        self.temporal_bootstrap_cluster_labels: Optional[List[Any]] = None
+        self.temporal_bootstrap_block_length: Optional[int] = None
 
     def _convert_causal_effect_method(self, method: CausalEffectMethod) -> CausalEffectMethod:
         """Convert a generic ``CausalEffectMethod`` into a specific subclass."""
@@ -242,17 +256,53 @@ class CausalPipe:
             print("Starting data preprocessing...")
 
             # Define variable types
-            continuous_vars = self.variable_types.continuous
-            ordinal_vars = self.variable_types.ordinal
-            nominal_vars = self.variable_types.nominal
+            active_variable_types = self.base_variable_types
+
+            df_prepared = df.copy()
+            if self.temporal_config is not None:
+                print("Preparing temporal lag-expanded data...")
+                temporal_result = expand_temporal_data(
+                    df_prepared,
+                    temporal_config=self.temporal_config,
+                    variable_types=self.base_variable_types,
+                )
+                df_prepared = temporal_result.data
+                active_variable_types = VariableTypes(**temporal_result.variable_types)
+                self.variable_types = active_variable_types
+                self.temporal_metadata = temporal_result.metadata
+                self.temporal_background_knowledge_constraints = (
+                    temporal_result.knowledge_constraints
+                )
+                self.lagged_column_map = temporal_result.lagged_column_map
+                self.temporal_bootstrap_unit = temporal_result.bootstrap_unit
+                self.temporal_bootstrap_cluster_labels = (
+                    temporal_result.bootstrap_cluster_labels
+                )
+                self.temporal_bootstrap_block_length = (
+                    temporal_result.bootstrap_block_length
+                )
+                dump_json_to(
+                    self.temporal_metadata,
+                    os.path.join(self.output_path, "temporal_metadata.json"),
+                )
+            else:
+                self.variable_types = self.base_variable_types
+                self.temporal_metadata = {}
+                self.temporal_background_knowledge_constraints = {}
+                self.lagged_column_map = {}
+                self.temporal_bootstrap_unit = None
+                self.temporal_bootstrap_cluster_labels = None
+                self.temporal_bootstrap_block_length = None
+
+            continuous_vars = active_variable_types.continuous
+            ordinal_vars = active_variable_types.ordinal
+            nominal_vars = active_variable_types.nominal
             all_vars = continuous_vars + ordinal_vars + nominal_vars
 
             if not all_vars:
                 raise ValueError(
                     "No variables specified in variable_types. Please define at least one variable."
                 )
-
-            df_prepared = df.copy()
 
             if not self.preprocessing_params.no_preprocessing:
                 # Prepare data for mixed model
@@ -376,6 +426,10 @@ class CausalPipe:
             df = self.preprocessed_data
 
             if isinstance(self.skeleton_method, BCSLSkeletonMethod):
+                if self.temporal_config is not None:
+                    raise NotImplementedError(
+                        "Temporal mode currently supports FAS skeleton discovery only."
+                    )
                 bcsl = BCSL(
                     data=df,
                     num_bootstrap_samples=self.skeleton_method.bootstrap_resamples,
@@ -407,6 +461,11 @@ class CausalPipe:
                     )
                 # FAS (“Fast Adjacency Search”) is the adjacency search of the PC algorithm, used as a first step for the FCI algorithm.
                 nodes = get_nodes_from_node_names(node_names=list(df.columns))
+                fas_knowledge = self.skeleton_method.knowledge
+                if self.temporal_config is not None:
+                    fas_knowledge = self._temporal_background_knowledge(
+                        clone_background_knowledge(fas_knowledge), nodes=nodes
+                    )
                 cit_method = CIT(
                     data=df.values,
                     method=self.skeleton_method.conditional_independence_method,
@@ -416,7 +475,7 @@ class CausalPipe:
                     nodes=nodes,
                     independence_test_method=cit_method,
                     alpha=self.skeleton_method.alpha,
-                    knowledge=self.skeleton_method.knowledge,
+                    knowledge=fas_knowledge,
                     depth=self.skeleton_method.depth,
                     show_progress=self.verbose,
                 )
@@ -437,7 +496,7 @@ class CausalPipe:
                     fas_kwargs = dict(
                         alpha=self.skeleton_method.alpha,
                         depth=self.skeleton_method.depth,
-                        knowledge=self.skeleton_method.knowledge,
+                        knowledge=fas_knowledge,
                         conditional_independence_method=self.skeleton_method.conditional_independence_method,
                     )
                     (
@@ -450,6 +509,13 @@ class CausalPipe:
                         fas_kwargs=fas_kwargs,
                         output_dir=os.path.join(self.output_path, "fas_bootstrap"),
                         n_jobs=self.skeleton_method.n_jobs,
+                        bootstrap_unit=(
+                            self.temporal_bootstrap_unit
+                            if self.temporal_config is not None
+                            else "row"
+                        ),
+                        cluster_labels=self.temporal_bootstrap_cluster_labels,
+                        block_length=self.temporal_bootstrap_block_length,
                     )
                     oriented_probs = {
                         k: {"TAIL-TAIL": v} for k, v in self.fas_edge_probabilities.items()
@@ -537,12 +603,18 @@ class CausalPipe:
             df = self.preprocessed_data
 
             if isinstance(self.orientation_method, FCIOrientationMethod):
+                background_knowledge = self.orientation_method.background_knowledge
+                if self.temporal_config is not None:
+                    background_knowledge = self._temporal_background_knowledge(
+                        clone_background_knowledge(background_knowledge),
+                        nodes=self.undirected_graph.nodes,
+                    )
                 graph_fci, edges_fci = fci_orient_edges_from_graph_node_sepsets(
                     data=df.values,
                     graph=copy_graph(self.undirected_graph),
                     nodes=self.undirected_graph.nodes,
                     sepsets=self.sepsets,
-                    background_knowledge=self.orientation_method.background_knowledge,
+                    background_knowledge=background_knowledge,
                     independence_test_method=self.orientation_method.conditional_independence_method,
                     alpha=self.orientation_method.alpha,
                     max_path_length=self.orientation_method.max_path_length,
@@ -582,6 +654,31 @@ class CausalPipe:
         except Exception as e:
             self._log_error(method_name, e)
             return None
+
+    def _temporal_background_knowledge(
+        self,
+        base_knowledge: Optional[BackgroundKnowledge],
+        *,
+        nodes: Optional[List[Any]] = None,
+    ) -> BackgroundKnowledge:
+        """Build or merge temporal background knowledge for FAS/FCI."""
+
+        knowledge, conflicts = merge_temporal_background_knowledge(
+            base_knowledge,
+            self.temporal_background_knowledge_constraints,
+            background_knowledge_cls=BackgroundKnowledge,
+            nodes=nodes,
+        )
+        self.temporal_background_knowledge = knowledge
+        if self.temporal_metadata:
+            bk = self.temporal_metadata.setdefault("background_knowledge", {})
+            existing_conflicts = bk.get("conflicts", [])
+            bk["conflicts"] = existing_conflicts + conflicts
+            dump_json_to(
+                self.temporal_metadata,
+                os.path.join(self.output_path, "temporal_metadata.json"),
+            )
+        return knowledge
 
     def estimate_causal_effects(
         self, df: Optional[pd.DataFrame] = None, show_plot: bool = False

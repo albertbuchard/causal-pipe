@@ -217,13 +217,9 @@ class GraphHillClimber:
                                 raise ValueError(
                                     f"[{self.name}] Best group neighbor should not be None."
                                 )
-                            neighbor = make_edge_bidirected(
-                                neighbor, changed_edge
-                            )
+                            neighbor = best_group_neighbor
                         else:
-                            raise ValueError(
-                                f"[{self.name}] The edge should have a circle endpoint to consider undirected."
-                            )
+                            continue
                     else:
                         neighbor = best_group_neighbor
 

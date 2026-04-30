@@ -1,6 +1,4 @@
 
-### Quick Start
-```markdown
 # Quick Start
 
 This guide will help you get started with **CausalPipe** by showing how to set up a basic causal analysis pipeline.
@@ -115,3 +113,6 @@ print(results["pysr"]["structural_equations"])
 
 For more details on the API, see the [API Reference](api_reference.md).
 
+For single time series or repeated-measures panel data, use
+[`TemporalConfig`](temporal.md) to create lag-expanded graphs while preserving
+the same pipeline interface.
