@@ -9,7 +9,6 @@ from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.graph.GraphNode import GraphNode
 
 from causal_pipe import CausalPipe
-from causal_pipe.causal_discovery.static_causal_discovery import visualize_graph
 from causal_pipe.pipe_config import (
     CausalPipeConfig,
     ConditionalIndependenceMethodEnum,
@@ -25,9 +24,9 @@ from causal_pipe.pipe_config import (
 )
 
 try:
-    from .effect_reporting import print_causal_effect_summary
+    from .effect_reporting import print_causal_effect_summary, save_true_graph
 except ImportError:
-    from effect_reporting import print_causal_effect_summary
+    from effect_reporting import print_causal_effect_summary, save_true_graph
 
 
 def generate_temporal_medium_panel(
@@ -151,10 +150,11 @@ def run_temporal_medium_example(config: Optional[CausalPipeConfig] = None) -> Ca
     data = generate_temporal_medium_panel(seed=config.seed)
 
     true_graph = create_true_temporal_graph_medium()
-    visualize_graph(
+    save_true_graph(
         true_graph,
         title="True Temporal Graph (MEDIUM)",
-        show=config.show_plots,
+        output_path=config.output_path,
+        filename="temporal_medium_true_graph.png",
     )
 
     pipe = CausalPipe(config)

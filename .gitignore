@@ -153,6 +153,10 @@ Thumbs.db
 *_bak
 
 output
+outputs/
+docs/api_reference/
+docs/img/PySR_update*.afpub
+docs/img/PySR_update_*.png
 .idea
 /causal_pipe.egg-info/
 /dist/

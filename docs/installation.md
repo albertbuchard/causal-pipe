@@ -4,7 +4,7 @@
 Follow these instructions to install **CausalPipe** on your system.
 
 ### Requirements
-- Python 3.6 or higher
+- Python 3.9.6 or higher
 - R (required for `lavaan` and `mice` integration)
 
 ### Installing via PyPI

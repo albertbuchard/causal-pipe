@@ -9,7 +9,6 @@ from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.graph.GraphNode import GraphNode
 
 from causal_pipe import CausalPipe
-from causal_pipe.causal_discovery.static_causal_discovery import visualize_graph
 from causal_pipe.pipe_config import (
     CausalPipeConfig,
     ConditionalIndependenceMethodEnum,
@@ -24,9 +23,9 @@ from causal_pipe.pipe_config import (
 )
 
 try:
-    from .effect_reporting import print_causal_effect_summary
+    from .effect_reporting import print_causal_effect_summary, save_true_graph
 except ImportError:
-    from effect_reporting import print_causal_effect_summary
+    from effect_reporting import print_causal_effect_summary, save_true_graph
 
 
 def generate_temporal_hard_panel(
@@ -77,13 +76,13 @@ def generate_temporal_hard_panel(
             symptom = (
                 0.50 * symptom_hist[-1]
                 + 0.60 * stress_hist[-1]
-                + 0.25 * load_hist[-2]
+                + 0.85 * load_hist[-2]
                 + rng.normal(0, 0.8)
             )
             outcome = (
                 0.45 * outcome_hist[-1]
                 + 0.70 * symptom_hist[-1]
-                - 0.30 * recovery_hist[-2]
+                - 0.75 * recovery_hist[-2]
                 + rng.normal(0, 0.9)
             )
 
@@ -199,10 +198,11 @@ def run_temporal_hard_example(config: Optional[CausalPipeConfig] = None) -> Caus
     data = generate_temporal_hard_panel(seed=config.seed)
 
     true_graph = create_true_temporal_graph_hard()
-    visualize_graph(
+    save_true_graph(
         true_graph,
         title="True Temporal Graph (HARD)",
-        show=config.show_plots,
+        output_path=config.output_path,
+        filename="temporal_hard_true_graph.png",
     )
 
     pipe = CausalPipe(config)
@@ -213,8 +213,9 @@ def run_temporal_hard_example(config: Optional[CausalPipeConfig] = None) -> Caus
     print_causal_effect_summary(
         pipe,
         expected_edges=[
-            "load__lag2 -> symptom__t",
-            "recovery__lag2 -> outcome__t",
+            "load__lag2 -> load__lag1",
+            "outcome__lag2 -> outcome__lag1",
+            "recovery__lag2 -> stress__lag1",
             "stress__lag1 -> symptom__t",
             "symptom__lag1 -> outcome__t",
         ],

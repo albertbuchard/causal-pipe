@@ -1,7 +1,7 @@
 # CausalPipe
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Python Version](https://img.shields.io/badge/Python-3.6%2B-blue.svg)
+![Python Version](https://img.shields.io/badge/Python-3.9.6%2B-blue.svg)
 ![PyPI Version](https://img.shields.io/pypi/v/causal-pipe.svg)
 
 **CausalPipe** is a Python wrapper built on [Causal-Learn](https://github.com/cmu-phil/causal-learn) and [Lavaan](https://lavaan.ugent.be/) that offers a predefined and well-formalized process for causal analysis tailored for everyday users. It provides intuitive tools for data preparation, constructing and orienting causal graphs, and visualizing results, supporting both ordinal and continuous variables.
@@ -47,7 +47,7 @@ pip install causal-pipe
 
 CausalPipe relies on several Python and R packages. Ensure that you have the following dependencies installed:
 
-- **Python 3.6 or higher**
+- **Python 3.9.6 or higher**
 - **R:** Required for Structural Equation Modeling (`lavaan`) and multiple imputation (`mice`).
 - **Python Packages:**
   - `numpy>=1.18.0`

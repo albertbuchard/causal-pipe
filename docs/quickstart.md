@@ -106,8 +106,8 @@ config.causal_effect_methods = [
 ]
 
 causal_pipe = CausalPipe(config)
-results = causal_pipe.run_pipeline(data)
-print(results["pysr"]["structural_equations"])
+causal_pipe.run_pipeline(data)
+print(causal_pipe.causal_effects["pysr"]["structural_equations"])
 ```
 
 ## 5. Testing A Mediation Path

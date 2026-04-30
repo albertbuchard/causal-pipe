@@ -12,6 +12,7 @@ import pandas as pd
 
 from causallearn.graph.GeneralGraph import GeneralGraph
 
+from causal_pipe.background_knowledge import BackgroundKnowledge
 from causal_pipe.pipe_config import (
     CausalPipeConfig,
     MediationAnalysisConfig,
@@ -19,7 +20,12 @@ from causal_pipe.pipe_config import (
     MediationTemporalLags,
 )
 from causal_pipe.sem.sem import fit_sem_lavaan
-from causal_pipe.temporal import current_name, lagged_name
+from causal_pipe.temporal import (
+    clone_background_knowledge,
+    current_name,
+    lagged_name,
+    merge_temporal_background_knowledge,
+)
 from causal_pipe.utilities.utilities import dump_json_to
 
 
@@ -69,10 +75,20 @@ def run_mediation_analysis_for_pipe(
 
     if data is not None and pipe.preprocessed_data is None:
         pipe.preprocess_data(data)
-        if pipe.undirected_graph is None:
-            pipe.identify_skeleton()
-        if pipe.directed_graph is None:
-            pipe.orient_edges()
+        background_application = None
+        if config.apply_background_knowledge and pipe.preprocessed_data is not None:
+            background_application = _install_mediation_background_knowledge(pipe, config)
+        try:
+            if pipe.undirected_graph is None:
+                pipe.identify_skeleton()
+            if pipe.directed_graph is None:
+                pipe.orient_edges()
+        finally:
+            if background_application is not None:
+                _restore_mediation_background_knowledge(pipe, background_application)
+        pipe._mediation_background_knowledge_application = background_application
+    else:
+        pipe._mediation_background_knowledge_application = None
 
     if pipe.preprocessed_data is None:
         raise ValueError(
@@ -100,6 +116,9 @@ def run_mediation_analysis_for_pipe(
             causal_effects=pipe.causal_effects,
             output_root=out_root,
             sem_fit_func=sem_fit_func,
+            background_knowledge_application=getattr(
+                pipe, "_mediation_background_knowledge_application", None
+            ),
         )
         results["analyses"][resolved.name] = result
 
@@ -180,6 +199,7 @@ def run_single_mediation(
     causal_effects: Optional[Dict[str, Any]],
     output_root: str,
     sem_fit_func: SemFitFunc,
+    background_knowledge_application: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Fit and summarize one mediation specification."""
 
@@ -227,13 +247,17 @@ def run_single_mediation(
             warnings.append(f"{model_name} SEM fit failed: {exc}")
 
     effects = summarize_mediation_effects(sem_outputs, spec)
-    model_comparison = compare_mediation_models(sem_outputs)
+    model_comparison = compare_mediation_models(
+        sem_outputs,
+        compare_models=config.compare_models,
+    )
     graph_evidence = summarize_graph_evidence(
         spec,
         directed_graph=directed_graph,
         causal_effects=causal_effects if config.include_effect_method_evidence else None,
         columns=list(data.columns),
         apply_background_knowledge=config.apply_background_knowledge,
+        background_knowledge_application=background_knowledge_application,
     )
 
     if spec.original.require_discovered_path and not graph_evidence["all_path_edges_present"]:
@@ -345,7 +369,9 @@ def summarize_mediation_effects(
 
 
 def compare_mediation_models(
-    sem_outputs: Dict[str, Dict[str, Any]]
+    sem_outputs: Dict[str, Dict[str, Any]],
+    *,
+    compare_models: bool = True,
 ) -> Dict[str, Any]:
     """Compare direct, full, and partial SEM models using available fit metrics."""
 
@@ -369,8 +395,18 @@ def compare_mediation_models(
 
     score_key = "bic" if any(row["bic"] is not None for row in rows) else "aic"
     scored = [row for row in rows if row.get(score_key) is not None]
-    selected = min(scored, key=lambda row: row[score_key])["model"] if scored else None
     lookup = {row["model"]: row for row in rows}
+    if not compare_models:
+        return {
+            "models": rows,
+            "selected_best_model": None,
+            "score_key": score_key,
+            "partial_vs_full": {"metric": score_key, "delta": None},
+            "partial_vs_direct": {"metric": score_key, "delta": None},
+            "comparison_disabled": True,
+        }
+
+    selected = min(scored, key=lambda row: row[score_key])["model"] if scored else None
 
     return {
         "models": rows,
@@ -449,6 +485,7 @@ def summarize_graph_evidence(
     causal_effects: Optional[Dict[str, Any]],
     columns: Sequence[str],
     apply_background_knowledge: bool,
+    background_knowledge_application: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Summarize discovered-graph and effect-matrix support for the path."""
 
@@ -471,8 +508,113 @@ def summarize_graph_evidence(
         "requested_path_edges": edge_rows,
         "all_path_edges_present": all(row["present"] for row in edge_rows),
         "all_path_edges_oriented": all(row["oriented_forward"] for row in edge_rows),
-        "background_knowledge_applied": apply_background_knowledge,
+        "background_knowledge_requested": apply_background_knowledge,
+        "background_knowledge_applied": bool(
+            background_knowledge_application
+            and background_knowledge_application.get("applied_to_discovery")
+        ),
         "background_knowledge_constraints": constraints if apply_background_knowledge else {},
+        "background_knowledge_application": _public_background_application(
+            background_knowledge_application
+        ),
+    }
+
+
+def _install_mediation_background_knowledge(
+    pipe: Any,
+    config: MediationAnalysisConfig,
+) -> Dict[str, Any]:
+    """Temporarily merge mediation constraints into discovery background knowledge."""
+
+    resolved_specs = [
+        resolve_mediation_spec(
+            spec,
+            columns=list(pipe.preprocessed_data.columns),
+            temporal_metadata=pipe.temporal_metadata,
+            lagged_column_map=pipe.lagged_column_map,
+            index=index,
+        )
+        for index, spec in enumerate(config.specs, start=1)
+    ]
+    constraints = _combine_constraints(
+        build_mediation_background_constraints(resolved)
+        for resolved in resolved_specs
+    )
+
+    application: Dict[str, Any] = {
+        "applied_to_discovery": False,
+        "constraints": constraints,
+        "conflicts": [],
+    }
+
+    if hasattr(pipe.skeleton_method, "knowledge"):
+        original = pipe.skeleton_method.knowledge
+        knowledge, conflicts = merge_temporal_background_knowledge(
+            clone_background_knowledge(original),
+            constraints,
+            background_knowledge_cls=BackgroundKnowledge,
+        )
+        pipe.skeleton_method.knowledge = knowledge
+        application["skeleton_original"] = original
+        application["conflicts"].extend(
+            [{"stage": "skeleton", **conflict} for conflict in conflicts]
+        )
+        application["applied_to_discovery"] = True
+
+    if hasattr(pipe.orientation_method, "background_knowledge"):
+        original = pipe.orientation_method.background_knowledge
+        knowledge, conflicts = merge_temporal_background_knowledge(
+            clone_background_knowledge(original),
+            constraints,
+            background_knowledge_cls=BackgroundKnowledge,
+        )
+        pipe.orientation_method.background_knowledge = knowledge
+        application["orientation_original"] = original
+        application["conflicts"].extend(
+            [{"stage": "orientation", **conflict} for conflict in conflicts]
+        )
+        application["applied_to_discovery"] = True
+
+    return application
+
+
+def _restore_mediation_background_knowledge(
+    pipe: Any,
+    application: Dict[str, Any],
+) -> None:
+    """Restore user-provided background-knowledge objects after discovery."""
+
+    if "skeleton_original" in application and hasattr(pipe.skeleton_method, "knowledge"):
+        pipe.skeleton_method.knowledge = application["skeleton_original"]
+    if "orientation_original" in application and hasattr(
+        pipe.orientation_method, "background_knowledge"
+    ):
+        pipe.orientation_method.background_knowledge = application["orientation_original"]
+
+
+def _combine_constraints(
+    constraints: Iterable[Dict[str, List[Tuple[str, str]]]],
+) -> Dict[str, List[Tuple[str, str]]]:
+    combined = {"required": [], "forbidden": []}
+    for item in constraints:
+        for key in combined:
+            for edge in item.get(key, []):
+                if edge not in combined[key]:
+                    combined[key].append(edge)
+    return combined
+
+
+def _public_background_application(
+    application: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Return JSON-safe background-knowledge application metadata."""
+
+    if not application:
+        return {}
+    return {
+        "applied_to_discovery": bool(application.get("applied_to_discovery")),
+        "constraints": application.get("constraints", {}),
+        "conflicts": application.get("conflicts", []),
     }
 
 

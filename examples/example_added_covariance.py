@@ -1,5 +1,10 @@
+from pathlib import Path
+
+import matplotlib
 import numpy as np
 import pandas as pd
+
+matplotlib.use("Agg")
 
 from causal_pipe.causal_discovery.static_causal_discovery import visualize_graph
 from causallearn.graph.GeneralGraph import GeneralGraph
@@ -16,14 +21,19 @@ from causal_pipe.pipe_config import (
 )
 
 
-def simulate_data(n_samples: int = 500, seed: int = 0) -> pd.DataFrame:
+def simulate_data(n_samples: int = 300, seed: int = 0) -> pd.DataFrame:
     """Simulate dataset with a residual covariance between Var0 and Ord3."""
     rng = np.random.default_rng(seed)
 
     # Define and visualize the true causal graph
     true_graph = create_true_causal_graph_easy_with_ordinal_and_resid_cov()
+    figure_dir = Path("./output/examples/figures")
+    figure_dir.mkdir(parents=True, exist_ok=True)
     visualize_graph(
-        true_graph, title="True Causal Graph (EASY with Ordinal) and Residual Covariance", show=True
+        true_graph,
+        title="True Causal Graph (EASY with Ordinal) and Residual Covariance",
+        output_path=str(figure_dir / "added_covariance_true_graph.png"),
+        show=False,
     )
 
     # Var0 and Ord3 share unmeasured influence (correlated residuals)
@@ -139,7 +149,7 @@ def run_pipeline_with_resid_covariance():
                 finalize_with_resid_covariances=True,
                 whitelist_pairs=[("Var0", "Ord3")],
                 max_add=1,
-                max_iter=2,
+                max_iter=1,
             )
         ],
         study_name="example_added_covariance",
@@ -151,11 +161,20 @@ def run_pipeline_with_resid_covariance():
     pipe = CausalPipe(config)
     pipe.run_pipeline(data)
 
-    aug = pipe.causal_effects["sem-climbing"].get("resid_cov_aug")
-    print("Added covariances:", aug["added_covariances"])
-    print("Initial fit:", aug["initial_fit_measures"])
-    print("Final fit:", aug["fit_measures"])
-    print("Final model string:\n", aug["final_model_string"])
+    sem_results = pipe.causal_effects["sem-climbing"]
+    sem_summary = sem_results.get("summary", {})
+    aug = sem_summary.get("resid_cov_aug") or sem_results.get("resid_cov_aug")
+    added_covariances = aug.get("added_covariances", []) if aug else []
+    if added_covariances:
+        print("Added covariances:", added_covariances)
+        print("Initial fit:", aug.get("initial_fit_measures"))
+        print("Final fit:", aug.get("fit_measures"))
+        print("Final model string:\n", aug.get("final_model_string"))
+    else:
+        print("No additional residual-covariance augmentation was needed.")
+        print("Residual covariances in the fitted model:")
+        print(sem_summary.get("residual_covariances"))
+        print("Fit:", sem_summary.get("fit_measures"))
 
 
 if __name__ == "__main__":

@@ -1,3 +1,18 @@
+from pathlib import Path
+import sys
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from _standalone import default_example_config, ensure_repo_root_on_path, example_plot_path
+else:
+    from examples._standalone import (
+        default_example_config,
+        ensure_repo_root_on_path,
+        example_plot_path,
+    )
+
+ensure_repo_root_on_path()
+
 import numpy as np
 import pandas as pd
 from bcsl.graph_utils import visualize_graph
@@ -7,7 +22,7 @@ from causallearn.graph.GeneralGraph import GeneralGraph
 from causallearn.graph.GraphNode import GraphNode
 
 from causal_pipe.causal_pipe import CausalPipeConfig
-from causal_pipe.pipe_config import VariableTypes
+from causal_pipe.pipe_config import ConditionalIndependenceMethodEnum, VariableTypes
 from examples.utilities import compare_pipelines
 
 
@@ -17,7 +32,12 @@ def compare_non_linear_dataset(config: CausalPipeConfig):
     config.study_name = "pipe_non_linear_dataset"
 
     true_graph = create_true_causal_graph_non_linear()
-    visualize_graph(true_graph, title="True Causal Graph (NON_LINEAR)", show=True)
+    visualize_graph(
+        true_graph,
+        title="True Causal Graph (NON_LINEAR)",
+        output_path=example_plot_path("non_linear_true_graph.png"),
+        show=False,
+    )
 
     n_samples = 500
 
@@ -46,3 +66,11 @@ def create_true_causal_graph_non_linear() -> GeneralGraph:
         graph.add_edge(edge)
 
     return graph
+
+
+if __name__ == "__main__":
+    standalone_config = default_example_config()
+    standalone_config.skeleton_method.conditional_independence_method = (
+        ConditionalIndependenceMethodEnum.KCI
+    )
+    compare_non_linear_dataset(standalone_config)

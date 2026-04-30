@@ -1,4 +1,5 @@
 import os
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -9,8 +10,11 @@ from causallearn.graph.GraphNode import GraphNode
 
 from causal_pipe.mediation import (
     ResolvedMediationSpec,
+    _install_mediation_background_knowledge,
+    _restore_mediation_background_knowledge,
     build_mediation_background_constraints,
     build_mediation_model_strings,
+    compare_mediation_models,
     resolve_mediation_spec,
     run_single_mediation,
 )
@@ -252,3 +256,43 @@ def test_temporal_lag_override_and_background_constraints():
     assert resolved.mediators == ["m__lag1"]
     assert ("x__lag1", "m__lag1") in constraints["required"]
     assert ("m__lag1", "x__lag1") in constraints["forbidden"]
+
+
+def test_mediation_background_knowledge_is_temporarily_installed():
+    pipe = SimpleNamespace(
+        preprocessed_data=pd.DataFrame({"x": [1, 2], "m": [2, 3], "y": [3, 4]}),
+        temporal_metadata={},
+        lagged_column_map={},
+        skeleton_method=SimpleNamespace(knowledge=None),
+        orientation_method=SimpleNamespace(background_knowledge=None),
+    )
+    config = MediationAnalysisConfig(
+        specs=[MediationSpec(treatment="x", mediators=["m"], outcome="y")]
+    )
+
+    application = _install_mediation_background_knowledge(pipe, config)
+
+    assert application["applied_to_discovery"] is True
+    assert ("x", "m") in application["constraints"]["required"]
+    assert ("m", "x") in application["constraints"]["forbidden"]
+    assert pipe.skeleton_method.knowledge is not None
+    assert pipe.orientation_method.background_knowledge is not None
+
+    _restore_mediation_background_knowledge(pipe, application)
+
+    assert pipe.skeleton_method.knowledge is None
+    assert pipe.orientation_method.background_knowledge is None
+
+
+def test_compare_models_flag_keeps_fit_rows_without_selecting_best():
+    sem_outputs = {
+        "direct_only": {"fit_measures": {"bic": 20.0}},
+        "full_mediation": {"fit_measures": {"bic": 10.0}},
+        "partial_mediation": {"fit_measures": {"bic": 12.0}},
+    }
+
+    comparison = compare_mediation_models(sem_outputs, compare_models=False)
+
+    assert comparison["comparison_disabled"] is True
+    assert comparison["selected_best_model"] is None
+    assert len(comparison["models"]) == 3

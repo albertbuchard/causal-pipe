@@ -1,3 +1,18 @@
+from pathlib import Path
+import sys
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from _standalone import default_example_config, ensure_repo_root_on_path, example_plot_path
+else:
+    from examples._standalone import (
+        default_example_config,
+        ensure_repo_root_on_path,
+        example_plot_path,
+    )
+
+ensure_repo_root_on_path()
+
 import numpy as np
 import pandas as pd
 from causallearn.graph.Edge import Edge
@@ -21,7 +36,12 @@ def compare_hard_dataset(config: CausalPipeConfig):
     # Define True Causal Graph with a latent confounder U affecting Var0 and Var1
     # Note: U is latent and not included in the observed data
     true_graph = create_true_causal_graph_hard()
-    visualize_graph(true_graph, title="True Causal Graph (HARD)", show=True)
+    visualize_graph(
+        true_graph,
+        title="True Causal Graph (HARD)",
+        output_path=example_plot_path("hard_true_graph.png"),
+        show=False,
+    )
 
     # Latent confounder (not included in the dataset directly)
     # Assume there's a latent variable U that affects Var0 and Var1
@@ -143,3 +163,7 @@ def create_true_causal_graph_hard() -> GeneralGraph:
         graph.add_edge(edge)
 
     return graph
+
+
+if __name__ == "__main__":
+    compare_hard_dataset(default_example_config())

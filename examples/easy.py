@@ -1,3 +1,18 @@
+from pathlib import Path
+import sys
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from _standalone import default_example_config, ensure_repo_root_on_path, example_plot_path
+else:
+    from examples._standalone import (
+        default_example_config,
+        ensure_repo_root_on_path,
+        example_plot_path,
+    )
+
+ensure_repo_root_on_path()
+
 import numpy as np
 import pandas as pd
 from bcsl.graph_utils import visualize_graph
@@ -18,7 +33,12 @@ def compare_easy_dataset(config: CausalPipeConfig):
 
     # Define True Causal Graph
     true_graph = create_true_causal_graph_easy()
-    visualize_graph(true_graph, title="True Causal Graph (EASY)", show=True)
+    visualize_graph(
+        true_graph,
+        title="True Causal Graph (EASY)",
+        output_path=example_plot_path("easy_true_graph.png"),
+        show=False,
+    )
 
     n_samples = 500
 
@@ -88,3 +108,7 @@ def create_true_causal_graph_easy() -> GeneralGraph:
         graph.add_edge(edge)
 
     return graph
+
+
+if __name__ == "__main__":
+    compare_easy_dataset(default_example_config())

@@ -1,5 +1,20 @@
 # examples/easy_with_ordinal.py
 
+from pathlib import Path
+import sys
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from _standalone import default_example_config, ensure_repo_root_on_path, example_plot_path
+else:
+    from examples._standalone import (
+        default_example_config,
+        ensure_repo_root_on_path,
+        example_plot_path,
+    )
+
+ensure_repo_root_on_path()
+
 import numpy as np
 import pandas as pd
 from typing import List
@@ -13,6 +28,9 @@ from causallearn.graph.GraphNode import GraphNode
 from causal_pipe.causal_pipe import CausalPipeConfig
 from causal_pipe.pipe_config import (
     VariableTypes,
+    PearsonCausalEffectMethod,
+    SpearmanCausalEffectMethod,
+    MICausalEffectMethod,
     SEMCausalEffectMethod,
     SEMClimbingCausalEffectMethod,
     FASSkeletonMethod,
@@ -20,7 +38,9 @@ from causal_pipe.pipe_config import (
 from examples.utilities import compare_pipelines
 
 
-def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
+def compare_easy_dataset_with_ordinal(
+    config: CausalPipeConfig, use_sem_effects: bool = True
+) -> None:
     """
     Generates a synthetic dataset with at least two ordinal variables,
     defines the true causal graph, visualizes it, and compares different
@@ -35,7 +55,10 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     # Define and visualize the true causal graph
     true_graph = create_true_causal_graph_easy_with_ordinal()
     visualize_graph(
-        true_graph, title="True Causal Graph (EASY with Ordinal)", show=True
+        true_graph,
+        title="True Causal Graph (EASY with Ordinal)",
+        output_path=example_plot_path("easy_ordinal_true_graph.png"),
+        show=False,
     )
 
     n_samples = 500  # Number of samples in the synthetic dataset
@@ -105,15 +128,24 @@ def compare_easy_dataset_with_ordinal(config: CausalPipeConfig) -> None:
     )
 
     config.study_name = "pipe_easy_dataset_with_ordinal"
-    config.causal_effect_methods = [
-        # For ordinal data
-        SEMCausalEffectMethod(),
-        SEMClimbingCausalEffectMethod(
-            estimator="ML",
-            respect_pag=True,
-            finalize_with_resid_covariances=True,
-        ),
-    ]
+    if use_sem_effects:
+        config.causal_effect_methods = [
+            # For ordinal data
+            SEMCausalEffectMethod(),
+            SEMClimbingCausalEffectMethod(
+                estimator="ML",
+                respect_pag=True,
+                finalize_with_resid_covariances=True,
+                max_iter=2,
+                max_add=1,
+            ),
+        ]
+    else:
+        config.causal_effect_methods = [
+            PearsonCausalEffectMethod(),
+            SpearmanCausalEffectMethod(),
+            MICausalEffectMethod(),
+        ]
     config.preprocessing_params.keep_only_correlated_with = ["Var0", "Var5"]
     config.preprocessing_params.filter_method = "spearman"
 
@@ -160,3 +192,7 @@ def create_true_causal_graph_easy_with_ordinal() -> GeneralGraph:
         graph.add_edge(edge)
 
     return graph
+
+
+if __name__ == "__main__":
+    compare_easy_dataset_with_ordinal(default_example_config(), use_sem_effects=False)

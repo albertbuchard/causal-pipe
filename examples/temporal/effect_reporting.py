@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
+import matplotlib
 import numpy as np
 
 from causal_pipe import CausalPipe
+from causal_pipe.causal_discovery.static_causal_discovery import visualize_graph
+
+matplotlib.use("Agg")
 
 
 _LAG_RE = re.compile(r"^(?P<base>.+)__lag(?P<lag>\d+)$")
@@ -111,3 +116,13 @@ def print_causal_effect_summary(
         method_dir = os.path.join(pipe.output_path, "causal_effect", method_label)
         print(f"  Full matrix: {os.path.join(method_dir, method_label + '_results.json')}")
         print(f"  Plot: {os.path.join(method_dir, method_label + '_result.png')}")
+
+
+def save_true_graph(graph, title: str, output_path: str, filename: str) -> str:
+    """Save a teaching true-graph PNG without opening an interactive window."""
+
+    figure_dir = Path(output_path) / "figures"
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    path = figure_dir / filename
+    visualize_graph(graph, title=title, output_path=str(path), show=False)
+    return str(path)
