@@ -17,10 +17,17 @@ from causal_pipe.pipe_config import (
     FASSkeletonMethod,
     FCIOrientationMethod,
     HandlingMissingEnum,
+    MICausalEffectMethod,
     PearsonCausalEffectMethod,
+    SpearmanCausalEffectMethod,
     TemporalConfig,
     VariableTypes,
 )
+
+try:
+    from .effect_reporting import print_causal_effect_summary
+except ImportError:
+    from effect_reporting import print_causal_effect_summary
 
 
 def generate_temporal_easy_panel(
@@ -93,7 +100,11 @@ def build_temporal_easy_config(
             conditional_independence_method=ConditionalIndependenceMethodEnum.FISHERZ,
             max_path_length=2,
         ),
-        causal_effect_methods=[PearsonCausalEffectMethod()],
+        causal_effect_methods=[
+            PearsonCausalEffectMethod(),
+            SpearmanCausalEffectMethod(),
+            MICausalEffectMethod(),
+        ],
         temporal_config=TemporalConfig(
             id_col="id",
             time_col="time",
@@ -128,7 +139,15 @@ def run_temporal_easy_example(config: Optional[CausalPipeConfig] = None) -> Caus
 
     print("\nTemporal metadata:")
     print(pipe.temporal_metadata)
-    print("\nExpected key relation: activity__lag1 -> mood__t")
+    print_causal_effect_summary(
+        pipe,
+        expected_edges=[
+            "activity__lag1 -> mood__t",
+            "activity__lag1 -> activity__t",
+            "mood__lag1 -> mood__t",
+        ],
+        top_n=6,
+    )
     return pipe
 
 

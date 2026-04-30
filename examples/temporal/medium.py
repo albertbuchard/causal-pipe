@@ -17,10 +17,17 @@ from causal_pipe.pipe_config import (
     FASSkeletonMethod,
     FCIOrientationMethod,
     HandlingMissingEnum,
+    MICausalEffectMethod,
     PearsonCausalEffectMethod,
+    SpearmanCausalEffectMethod,
     TemporalConfig,
     VariableTypes,
 )
+
+try:
+    from .effect_reporting import print_causal_effect_summary
+except ImportError:
+    from effect_reporting import print_causal_effect_summary
 
 
 def generate_temporal_medium_panel(
@@ -115,7 +122,11 @@ def build_temporal_medium_config(
             conditional_independence_method=ConditionalIndependenceMethodEnum.FISHERZ,
             max_path_length=3,
         ),
-        causal_effect_methods=[PearsonCausalEffectMethod()],
+        causal_effect_methods=[
+            PearsonCausalEffectMethod(),
+            SpearmanCausalEffectMethod(),
+            MICausalEffectMethod(),
+        ],
         temporal_config=TemporalConfig(
             id_col="id",
             time_col="time",
@@ -151,7 +162,16 @@ def run_temporal_medium_example(config: Optional[CausalPipeConfig] = None) -> Ca
 
     print("\nTemporal metadata:")
     print(pipe.temporal_metadata)
-    print("\nExpected pathway: activity__lag1 -> stress__t -> performance dynamics")
+    print_causal_effect_summary(
+        pipe,
+        expected_edges=[
+            "activity__lag1 -> stress__t",
+            "stress__lag1 -> sleep__t",
+            "sleep__lag1 -> performance__t",
+            "stress__lag1 -> performance__t",
+        ],
+        top_n=10,
+    )
     return pipe
 
 

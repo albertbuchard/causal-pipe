@@ -18,9 +18,15 @@ from causal_pipe.pipe_config import (
     FCIOrientationMethod,
     HandlingMissingEnum,
     PearsonCausalEffectMethod,
+    SpearmanCausalEffectMethod,
     TemporalConfig,
     VariableTypes,
 )
+
+try:
+    from .effect_reporting import print_causal_effect_summary
+except ImportError:
+    from effect_reporting import print_causal_effect_summary
 
 
 def generate_temporal_hard_panel(
@@ -165,7 +171,10 @@ def build_temporal_hard_config(
             conditional_independence_method=ConditionalIndependenceMethodEnum.FISHERZ,
             max_path_length=4,
         ),
-        causal_effect_methods=[PearsonCausalEffectMethod()],
+        causal_effect_methods=[
+            PearsonCausalEffectMethod(),
+            SpearmanCausalEffectMethod(),
+        ],
         temporal_config=TemporalConfig(
             id_col="id",
             time_col="time",
@@ -201,7 +210,16 @@ def run_temporal_hard_example(config: Optional[CausalPipeConfig] = None) -> Caus
 
     print("\nTemporal metadata:")
     print(pipe.temporal_metadata)
-    print("\nExpected hard relations include lag-2 effects into symptom and outcome.")
+    print_causal_effect_summary(
+        pipe,
+        expected_edges=[
+            "load__lag2 -> symptom__t",
+            "recovery__lag2 -> outcome__t",
+            "stress__lag1 -> symptom__t",
+            "symptom__lag1 -> outcome__t",
+        ],
+        top_n=12,
+    )
     return pipe
 
 
