@@ -135,6 +135,7 @@ Retrieves the names of ordinal and nominal variables.
   - `HillClimbingOrientationMethod`
 - `causal_effect_methods` (`Optional[List[CausalEffectMethod]]`): List of methods for estimating causal effects. Available classes include `PearsonCausalEffectMethod`, `SpearmanCausalEffectMethod`, `MICausalEffectMethod`, `KCICausalEffectMethod`, `SEMCausalEffectMethod`, `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`, and `PYSRCausalEffectMethodHillClimbing`.
 - `temporal_config` (`Optional[TemporalConfig]`, default `None`): Optional temporal setup for lag-expanded single-series or panel data.
+- `mediation_config` (`Optional[MediationAnalysisConfig]`, default `None`): Optional configuration for testing user-defined mediation paths.
 - `study_name` (`str`): Unique identifier for the study.
 - `output_path` (`str`): Directory where results will be saved.
 - `show_plots` (`bool`): Whether to show plots.
@@ -208,6 +209,45 @@ Retrieves the names of ordinal and nominal variables.
     - `CausalPipe.lagged_column_map`: Mapping from original variables to generated columns.
 
 Temporal mode currently supports FAS skeleton discovery with FCI orientation. BCSL temporal skeleton discovery raises `NotImplementedError`.
+
+---
+
+#### MediationAnalysisConfig
+
+**`MediationAnalysisConfig`** configures SEM-backed mediation tests for one or more user-defined paths.
+
+- **Attributes:**
+    - `specs` (`List[MediationSpec]`): Mediation paths to test.
+    - `estimator` (`str`, default `"ML"`): lavaan estimator used for mediation SEMs.
+    - `bootstrap_samples` (`int`, default `1000`): Number of bootstrap samples for indirect-effect confidence intervals.
+    - `alpha` (`float`, default `0.05`): Significance level for effect classification.
+    - `compare_models` (`bool`, default `True`): Whether model-comparison metrics should be reported.
+    - `apply_background_knowledge` (`bool`, default `True`): Whether requested path constraints should be recorded as mediation background knowledge.
+    - `include_effect_method_evidence` (`bool`, default `True`): Whether existing causal-effect matrices are summarized for requested path edges.
+
+#### MediationSpec
+
+**`MediationSpec`** defines one mediation hypothesis.
+
+- **Attributes:**
+    - `treatment` (`str`): Treatment/exposure variable.
+    - `mediators` (`List[str]`): One or more mediators.
+    - `outcome` (`str`): Outcome variable.
+    - `covariates` (`List[str]`, default `[]`): Covariates included in mediator and outcome regressions.
+    - `mode` (`"parallel"` or `"serial"`, default `"parallel"`): Multiple mediator structure.
+    - `temporal_lags` (`Optional[MediationTemporalLags]`, default `None`): Explicit temporal lag mapping.
+    - `variables_are_lagged` (`bool`, default `False`): Set True when passing already-expanded temporal names.
+    - `require_discovered_path` (`bool`, default `False`): If True, classification requires the discovered graph to contain the requested path.
+    - `name` (`Optional[str]`, default `None`): Optional output folder/result key.
+
+#### MediationTemporalLags
+
+**`MediationTemporalLags`** maps a temporal mediation path onto lag-expanded nodes. Lag `0` means current time (`__t`); positive lags map to `__lagN`.
+
+- **Attributes:**
+    - `treatment` (`int`): Treatment lag.
+    - `mediators` (`List[int]`): Mediator lags in the same order as `MediationSpec.mediators`.
+    - `outcome` (`int`, default `0`): Outcome lag.
 
 ---
 

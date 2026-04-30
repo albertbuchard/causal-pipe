@@ -9,6 +9,7 @@ Welcome to the documentation for **CausalPipe**, a Python package that simplifie
 - **Causal Effect Estimation**: Estimate effects using methods such as Partial Correlation, Structural Equation Modeling (SEM), or kernel methods.
 - **Symbolic Regression**: Integrate [PySR](https://github.com/MilesCranmer/PySR) to learn nonlinear structural equations and score cyclic models via pseudo-likelihood or MMD<sup>2</sup>.
 - **Temporal Data**: Build lag-expanded graphs for single time series or repeated-measures panel data using `TemporalConfig`.
+- **Mediation Analysis**: Test user-defined direct, full-mediation, and partial-mediation paths with SEM-backed model comparison.
 - **Visualization**: Visualize correlation graphs, causal graphs, and SEM results.
 
 ## Configuration Classes
@@ -29,5 +30,8 @@ step of the pipeline:
   `PYSRCausalEffectMethodHillClimbing`.
 - **Temporal mode** – `TemporalConfig` adds lag expansion, temporal
   background knowledge, and temporal bootstrap defaults for time-varying data.
+- **Mediation analysis** – `MediationAnalysisConfig` and `MediationSpec`
+  test hypothesized mediation paths after static or temporal preprocessing.
 
 For longitudinal or time-series workflows, see [Temporal Data](temporal.md).
+For direct/full/partial mediation testing, see [Mediation Analysis](mediation.md).

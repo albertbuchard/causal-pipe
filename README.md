@@ -27,6 +27,7 @@
 
 - **Data Preprocessing:** Handle missing values using multiple imputation (`MICE`), encode categorical variables, standardize features, and perform feature selection based on correlation.
 - **Temporal Data:** Build lag-expanded graphs for single time series and repeated-measures panel data with temporal background knowledge.
+- **Mediation Analysis:** Test user-defined direct, full-mediation, and partial-mediation paths with SEM-backed model comparison and indirect-effect estimates.
 - **Skeleton Identification:** Identify the global skeleton of the causal graph using methods like Fast Adjacency Search (`FAS`) or Bootstrap-based Causal Structure Learning (`BCSL`).
 - **Edge Orientation:** Orient edges in the skeleton using algorithms such as Fast Causal Inference (`FCI`) or Hill Climbing.
 - **Causal Effect Estimation:** Estimate causal effects using methods such as Partial Pearson/Spearman correlations, Conditional Mutual Information (`MI`), Kernel Conditional Independence (`KCI`), Structural Equation Modeling (`SEM`), hill-climbing SEM, and PySR-based symbolic regression that learns nonlinear structural equations and can score cyclic models via pseudo-likelihood or MMD².
@@ -290,6 +291,30 @@ print(causal_pipe.temporal_metadata)
 
 See the temporal data guide in the documentation for cross-sectional,
 single-series, and repeated-measures setup details.
+
+### Example: Mediation Analysis
+
+Use mediation analysis to test a specific path such as `x -> m -> y`.
+CausalPipe fits direct-only, full-mediation, and partial-mediation SEMs and
+returns a classification plus direct and indirect effect estimates.
+
+```python
+from causal_pipe.pipe_config import MediationAnalysisConfig, MediationSpec
+
+config.mediation_config = MediationAnalysisConfig(
+    specs=[MediationSpec(treatment="x", mediators=["m"], outcome="y")],
+    bootstrap_samples=1000,
+)
+
+causal_pipe = CausalPipe(config)
+causal_pipe.run_pipeline(data)
+mediation = causal_pipe.run_mediation_analysis()
+print(mediation["analyses"]["1_x_m_y"]["classification"])
+```
+
+For temporal data, combine `MediationAnalysisConfig` with `TemporalConfig`.
+The mediation wrapper resolves original names to lag-expanded paths such as
+`x__lag2 -> m__lag1 -> y__t`.
 
 ## Documentation
 

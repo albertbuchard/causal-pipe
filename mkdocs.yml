@@ -6,6 +6,7 @@ nav:
   - Installation: installation.md
   - Quick Start: quickstart.md
   - Temporal Data: temporal.md
+  - Mediation Analysis: mediation.md
   - API Reference: api_reference.md
   - Contributing: contributing.md
 site_url: https://albertbuchard.github.io/causal-pipe

@@ -8,10 +8,10 @@ import pandas as pd
 from bcsl.bcsl import BCSL
 from bcsl.fci import fci_orient_edges_from_graph_node_sepsets
 from causallearn.graph.GeneralGraph import GeneralGraph
-from causallearn.utils.PCUtils.BackgroundKnowledge import BackgroundKnowledge
 from causallearn.utils.FAS import fas
 from causallearn.utils.cit import CIT
 
+from causal_pipe.background_knowledge import BackgroundKnowledge
 from causal_pipe.causal_discovery.static_causal_discovery import (
     prepare_data_for_causal_discovery,
     perform_data_validity_checks,
@@ -44,6 +44,7 @@ from causal_pipe.utilities.graph_utilities import (
 from causal_pipe.utilities.plot_utilities import plot_correlation_graph
 from causal_pipe.pysr.pysr_regression import symbolic_regression_causal_effect
 from causal_pipe.pysr.cyclic_scm import CyclicSCMSimulator
+from causal_pipe.mediation import run_mediation_analysis_for_pipe
 from .pipe_config import (
     CausalPipeConfig,
     FASSkeletonMethod,
@@ -87,6 +88,7 @@ class CausalPipe:
         """
         # Initialize error logging
         self.errors: List[str] = []
+        self.config = config
 
         # Variable types
         if isinstance(config.variable_types, dict):
@@ -128,6 +130,7 @@ class CausalPipe:
         self.sepsets: Dict[Tuple[int, int], Set[int]] = {}
         self.directed_graph: Optional[GeneralGraph] = None
         self.causal_effects: Dict[str, Any] = {}
+        self.mediation_results: Dict[str, Any] = {}
         self.temporal_metadata: Dict[str, Any] = {}
         self.temporal_background_knowledge: Optional[BackgroundKnowledge] = None
         self.temporal_background_knowledge_constraints: Dict[str, Any] = {}
@@ -1031,6 +1034,30 @@ class CausalPipe:
             )
             return [var for var in initial_vars if var not in self.filtered_variables]
         return initial_vars
+
+    def run_mediation_analysis(
+        self,
+        data: Optional[pd.DataFrame] = None,
+        mediation_config: Optional[Any] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Run SEM-backed mediation analysis for user-defined mediation paths.
+
+        Existing preprocessed data, directed graph, temporal metadata, and
+        causal-effect estimates are reused. If raw data is supplied before the
+        pipeline has been prepared, preprocessing, skeleton identification, and
+        orientation are run first.
+        """
+        method_name = "run_mediation_analysis"
+        try:
+            return run_mediation_analysis_for_pipe(
+                self,
+                data=data,
+                mediation_config=mediation_config,
+            )
+        except Exception as e:
+            self._log_error(method_name, e)
+            return None
 
     def run_pipeline(self, df: pd.DataFrame):
         """

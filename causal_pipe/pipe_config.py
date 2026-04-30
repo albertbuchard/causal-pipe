@@ -11,9 +11,14 @@ from pydantic import (
     field_validator,
 )
 
-from causallearn.utils.PCUtils.BackgroundKnowledge import BackgroundKnowledge
+from causal_pipe.background_knowledge import BackgroundKnowledge
 
-from causal_pipe.pysr.pysr_hill_climber import PySREstimatorEnum
+try:
+    from causal_pipe.pysr.pysr_hill_climber import PySREstimatorEnum
+except Exception:
+    class PySREstimatorEnum(str, Enum):
+        PSEUDOLIKELIHOOD = "pseudolikelihood"
+        MMDSQUARED = "mmdsquared"
 
 
 # Define Enums for various configurable options
@@ -182,6 +187,108 @@ class TemporalConfig(BaseModel):
         if any((not isinstance(lag, int)) or lag <= 0 for lag in v):
             raise ValueError("lags must contain only positive integers")
         return sorted(set(v))
+
+    class Config:
+        validate_assignment = True
+
+
+class MediationTemporalLags(BaseModel):
+    """
+    Explicit temporal node mapping for mediation analysis.
+
+    Lag ``0`` means the current-time node, for example ``y__t``. Positive
+    values mean lagged nodes, for example ``x__lag2``.
+    """
+
+    treatment: int
+    mediators: List[int]
+    outcome: int = 0
+
+    @field_validator("treatment", "outcome")
+    @classmethod
+    def check_single_lag(cls, v):
+        if v < 0:
+            raise ValueError("temporal lags must be non-negative")
+        return v
+
+    @field_validator("mediators")
+    @classmethod
+    def check_mediator_lags(cls, v):
+        if not v:
+            raise ValueError("mediators must contain at least one lag")
+        if any(lag < 0 for lag in v):
+            raise ValueError("mediator lags must be non-negative")
+        return v
+
+    class Config:
+        validate_assignment = True
+
+
+class MediationSpec(BaseModel):
+    """
+    User-defined mediation path to test.
+
+    Static analyses use ordinary column names. Temporal analyses may use
+    original semantic names, which are resolved through ``TemporalConfig`` and
+    ``lagged_column_map`` unless ``variables_are_lagged`` is True.
+    """
+
+    treatment: str
+    mediators: List[str]
+    outcome: str
+    covariates: List[str] = Field(default_factory=list)
+    mode: Literal["parallel", "serial"] = "parallel"
+    temporal_lags: Optional[MediationTemporalLags] = None
+    variables_are_lagged: bool = False
+    require_discovered_path: bool = False
+    name: Optional[str] = None
+
+    @field_validator("mediators")
+    @classmethod
+    def check_mediators(cls, v):
+        if not v:
+            raise ValueError("mediators must contain at least one variable")
+        if len(set(v)) != len(v):
+            raise ValueError("mediators must be unique")
+        return v
+
+    class Config:
+        validate_assignment = True
+
+
+class MediationAnalysisConfig(BaseModel):
+    """
+    Configuration for one or more mediation analyses.
+    """
+
+    specs: List[MediationSpec]
+    estimator: str = "ML"
+    bootstrap_samples: int = 1000
+    alpha: float = 0.05
+    compare_models: bool = True
+    apply_background_knowledge: bool = True
+    include_effect_method_evidence: bool = True
+
+    @field_validator("specs")
+    @classmethod
+    def check_specs(cls, v):
+        if not v:
+            raise ValueError("specs must contain at least one MediationSpec")
+        return v
+
+    @field_validator("bootstrap_samples")
+    @classmethod
+    def check_bootstrap_samples(cls, v):
+        if v < 0:
+            raise ValueError("bootstrap_samples must be non-negative")
+        return v
+
+    @field_validator("alpha")
+    @classmethod
+    def check_mediation_alpha(cls, v):
+        if not (0.0 < v < 1.0):
+            raise ValueError("alpha must be between 0.0 and 1.0")
+        return v
 
     class Config:
         validate_assignment = True
@@ -463,6 +570,7 @@ class CausalPipeConfig(BaseModel):
         default_factory=lambda: [CausalEffectMethod()]
     )
     temporal_config: Optional[TemporalConfig] = None
+    mediation_config: Optional[MediationAnalysisConfig] = None
     study_name: str = Field(default_factory=lambda: f"study_{uuid.uuid4()}")
     output_path: str = "./output/causal_toolkit_results"
     show_plots: bool = True

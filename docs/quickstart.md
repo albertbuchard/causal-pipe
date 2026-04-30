@@ -64,6 +64,8 @@ analysis:
   `KCICausalEffectMethod`, `SEMCausalEffectMethod`,
   `SEMClimbingCausalEffectMethod`, `PYSRCausalEffectMethod`,
   `PYSRCausalEffectMethodHillClimbing`
+- **Mediation analysis**: `MediationAnalysisConfig`, `MediationSpec`,
+  `MediationTemporalLags`
 
 ## 2. Initialize CausalPipe
 
@@ -108,6 +110,35 @@ results = causal_pipe.run_pipeline(data)
 print(results["pysr"]["structural_equations"])
 ```
 
+## 5. Testing A Mediation Path
+
+Use mediation analysis when you want to test a specific path such as
+`x -> m -> y`. CausalPipe fits direct-only, full-mediation, and
+partial-mediation SEMs and classifies the result.
+
+```python
+from causal_pipe.pipe_config import MediationAnalysisConfig, MediationSpec
+
+config.mediation_config = MediationAnalysisConfig(
+    specs=[
+        MediationSpec(
+            treatment="x",
+            mediators=["m"],
+            outcome="y",
+        )
+    ],
+    bootstrap_samples=1000,
+)
+
+causal_pipe = CausalPipe(config)
+causal_pipe.run_pipeline(data)
+mediation_results = causal_pipe.run_mediation_analysis()
+print(mediation_results["analyses"]["1_x_m_y"]["classification"])
+```
+
+For temporal data, combine mediation analysis with `TemporalConfig`; the
+mediation wrapper resolves original names to lagged nodes such as
+`x__lag2 -> m__lag1 -> y__t`.
 
 ---
 

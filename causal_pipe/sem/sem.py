@@ -45,6 +45,8 @@ def fit_sem_lavaan(
     exogenous_vars_model_1: Optional[List[str]] = None,
     exogenous_vars_model_2: Optional[List[str]] = None,
     exogenous_residual_covariances: bool = False,
+    se: Optional[str] = None,
+    bootstrap: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Fits a Structural Equation Model (SEM) using the specified model string and returns comprehensive results.
@@ -153,10 +155,23 @@ def fit_sem_lavaan(
     ro.globalenv["data"] = r_data
     ro.globalenv["model_string"] = model_1_string
     ro.globalenv["estimator"] = estimator
+    ro.globalenv["se_method"] = se or "standard"
+    ro.globalenv["bootstrap_samples"] = int(bootstrap or 0)
 
     ro.globalenv["use_conditional_x"] = ro.r('TRUE')
     if exogenous_residual_covariances:
         ro.globalenv["use_conditional_x"] = ro.r('FALSE')
+    ro.r(
+        """
+        sem_extra_args <- list()
+        if (se_method != "standard") {
+            sem_extra_args$se <- se_method
+        }
+        if (bootstrap_samples > 0) {
+            sem_extra_args$bootstrap <- bootstrap_samples
+        }
+        """
+    )
 
     # Fit the SEM model with the ordered argument if provided
     try:
@@ -171,24 +186,26 @@ def fit_sem_lavaan(
             # ro.globalenv["model_string"] = model_string_convert_residual_cov_to_factor(model_1_string)
             ro.r(
                 """
-                    fit.mod <- sem(model = model_string, data = data, std.lv = TRUE, 
-                                   estimator = estimator, 
-                                   ordered = ordered_vars, 
-                                   auto.cov.y = FALSE,
-                                   fixed.x = use_conditional_x,
-                                   conditional.x = use_conditional_x,
-                                   auto.cov.lv.x = FALSE)
+                    fit_args <- c(list(model = model_string, data = data, std.lv = TRUE,
+                                       estimator = estimator,
+                                       ordered = ordered_vars,
+                                       auto.cov.y = FALSE,
+                                       fixed.x = use_conditional_x,
+                                       conditional.x = use_conditional_x,
+                                       auto.cov.lv.x = FALSE), sem_extra_args)
+                    fit.mod <- do.call(sem, fit_args)
                 """
             )
         else:
             ro.r(
                 """
-                    fit.mod <- sem(model = model_string, data = data, std.lv = TRUE, 
-                                   estimator = estimator, representation = "RAM", 
-                                   auto.cov.y = FALSE,
-                                   fixed.x = use_conditional_x,
-                                   conditional.x = use_conditional_x,
-                                   auto.cov.lv.x = FALSE)
+                    fit_args <- c(list(model = model_string, data = data, std.lv = TRUE,
+                                       estimator = estimator, representation = "RAM",
+                                       auto.cov.y = FALSE,
+                                       fixed.x = use_conditional_x,
+                                       conditional.x = use_conditional_x,
+                                       auto.cov.lv.x = FALSE), sem_extra_args)
+                    fit.mod <- do.call(sem, fit_args)
                 """
             )
     except Exception as e:
@@ -375,6 +392,37 @@ def fit_sem_lavaan(
     else:
         print("No regression paths found in the model. Skipping structural model.")
 
+    # Retrieve user-defined parameters such as mediation indirect effects (op :=)
+    defined_parameters_df = None
+    try:
+        ro.r(
+            """
+            defined_parameters <- parameterEstimates(
+                fit.mod, standardized = TRUE, ci = TRUE
+            ) %>%
+                filter(op == ":=")
+            """
+        )
+        defined_parameters = ro.r("defined_parameters")
+        with localconverter(ro.default_converter + pandas2ri.converter):
+            defined_parameters_df = ro.conversion.rpy2py(defined_parameters)
+
+        if var_names is not None and defined_parameters_df is not None:
+            if "lhs" in defined_parameters_df.columns:
+                defined_parameters_df["lhs"] = defined_parameters_df["lhs"].map(
+                    lambda x: var_names.get(x, x)
+                )
+
+        print("\nDefined Parameters:")
+        print(defined_parameters_df)
+    except Exception as e:
+        print(
+            "Error in retrieving defined parameters:",
+            file=sys.stderr,
+        )
+        print(e, file=sys.stderr)
+        defined_parameters_df = None
+
     # Retrieve parameter estimates for the residual covariances (op == "~~")
     residual_covariances_df = None
     try:
@@ -471,7 +519,7 @@ def fit_sem_lavaan(
 
     # Extract per-sample log-likelihoods using llcont from nonnest2 (only if estimator is ML)
     log_likelihoods = None
-    if estimator == "ML":
+    if estimator == "ML" and se != "bootstrap" and not bootstrap:
         try:
             # Load nonnest2 package
             ro.r("library(nonnest2)")
@@ -504,7 +552,8 @@ def fit_sem_lavaan(
             log_likelihoods = None
     else:
         print(
-            "\nPer-sample Log-Likelihoods are not available for the selected estimator."
+            "\nPer-sample Log-Likelihoods are not available for the selected estimator "
+            "or standard-error method."
         )
 
     # Model comparison if model_2_string is provided
@@ -525,24 +574,26 @@ def fit_sem_lavaan(
                 )
                 ro.r(
                     """
-                    fit.mod2 <- sem(model = model_2_string, data = data, std.lv = TRUE, 
-                                   estimator = estimator, 
-                                   ordered = ordered_vars_model_2, 
-                                   auto.cov.y = FALSE,
-                                   fixed.x = use_conditional_x,
-                                   conditional.x = use_conditional_x,
-                                   auto.cov.lv.x = FALSE)
+                    fit2_args <- c(list(model = model_2_string, data = data, std.lv = TRUE,
+                                        estimator = estimator,
+                                        ordered = ordered_vars_model_2,
+                                        auto.cov.y = FALSE,
+                                        fixed.x = use_conditional_x,
+                                        conditional.x = use_conditional_x,
+                                        auto.cov.lv.x = FALSE), sem_extra_args)
+                    fit.mod2 <- do.call(sem, fit2_args)
                     """
                 )
             else:
                 ro.r(
                     """
-                    fit.mod2 <- sem(model = model_2_string, data = data, std.lv = TRUE, 
-                                   estimator = estimator, representation = "RAM", 
-                                   auto.cov.y = FALSE,
-                                   fixed.x = use_conditional_x,
-                                   conditional.x = use_conditional_x,
-                                   auto.cov.lv.x = FALSE)
+                    fit2_args <- c(list(model = model_2_string, data = data, std.lv = TRUE,
+                                        estimator = estimator, representation = "RAM",
+                                        auto.cov.y = FALSE,
+                                        fixed.x = use_conditional_x,
+                                        conditional.x = use_conditional_x,
+                                        auto.cov.lv.x = FALSE), sem_extra_args)
+                    fit.mod2 <- do.call(sem, fit2_args)
                     """
                 )
         except Exception as e:
@@ -671,6 +722,9 @@ def fit_sem_lavaan(
         ),
         "measurement_model": dataframe_to_json_compatible_list(measurement_model_df),
         "structural_model": dataframe_to_json_compatible_list(structural_model_df),
+        "defined_parameters": dataframe_to_json_compatible_list(
+            defined_parameters_df
+        ),
         "residual_covariances": dataframe_to_json_compatible_list(
             residual_covariances_df
         ),
